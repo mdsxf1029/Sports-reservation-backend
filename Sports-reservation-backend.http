@@ -1,6 +1,0 @@
-@Sports_reservation_backend_HostAddress = http://localhost:5097
-
-GET {{Sports_reservation_backend_HostAddress}}/weatherforecast/
-Accept: application/json
-
-###
