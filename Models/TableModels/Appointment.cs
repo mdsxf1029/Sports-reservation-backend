@@ -22,6 +22,16 @@ public class Appointment
     [Required]
     [Column("APPOINTMENT_STATUS")]
     [SwaggerSchema(Description = "预约状态")]
+    [MaxLength(20)]
     public string AppointmentStatus { get; set; }=string.Empty;
+    
+    [Required]
+    [Column("APPOINTMENT_APPLY_TIME")]
+    [SwaggerSchema(Description = "预约时间")]
+    public DateTime AppointmentApplyTime { get; set; }
+    
+    [Column("APPOINTMENT_CANCEL_TIME")]
+    [SwaggerSchema(Description = "取消时间")]
+    public DateTime AppointmentCancelTime { get; set; }
     
 }

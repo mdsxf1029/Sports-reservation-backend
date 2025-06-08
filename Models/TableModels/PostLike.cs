@@ -4,7 +4,7 @@ using Swashbuckle.AspNetCore.Annotations;
 
 namespace Sports_reservation_backend.Models.TableModels;
 
-public class UsersPostLike
+public class PostLike
 {
     
 }

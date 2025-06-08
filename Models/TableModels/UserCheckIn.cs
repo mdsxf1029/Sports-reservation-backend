@@ -1,6 +1,6 @@
 ﻿namespace Sports_reservation_backend.Models.TableModels;
 
-public class UsersCommentLike
+public class UserCheckIn
 {
     
 }

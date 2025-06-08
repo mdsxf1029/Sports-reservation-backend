@@ -5,6 +5,7 @@ using Swashbuckle.AspNetCore.Annotations;
 namespace Sports_reservation_backend.Models.TableModels;
 
 [Table("POST")]
+[SwaggerSchema(Description = "帖子表")]
 public class Post
 {
     [Key]
