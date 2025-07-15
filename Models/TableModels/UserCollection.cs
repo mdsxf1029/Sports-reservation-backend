@@ -1,13 +1,12 @@
-﻿using System.ComponentModel.DataAnnotations.Schema;
-using Microsoft.EntityFrameworkCore;
+﻿using System.ComponentModel.DataAnnotations;
+using System.ComponentModel.DataAnnotations.Schema;
 using Swashbuckle.AspNetCore.Annotations;
 
 namespace Sports_reservation_backend.Models.TableModels;
 
-[Table("USERS_POST")]
-[PrimaryKey(nameof(UserId),nameof(PostId))]
-[SwaggerSchema("用户发帖表")]
-public class UsersPost
+[Table("USERS_COLLECTION")]
+[SwaggerSchema("用户收藏")]
+public class UserCollection
 {
     // 数据定义
     [Column("USER_ID")]
@@ -19,6 +18,11 @@ public class UsersPost
     [ForeignKey("Post")]
     [SwaggerSchema(Description = "帖子ID")]
     public int PostId { get; set; }
+    
+    [Required]
+    [Column("COLLECTED_TIME")]
+    [SwaggerSchema(Description = "收藏时间")]
+    public DateTime CollectedTime { get; set; }
     
     // 关系定义
     public User? User { get; set; }

@@ -6,7 +6,7 @@ namespace Sports_reservation_backend.Models.TableModels;
 
 [Table("FACILITY")]
 [SwaggerSchema(Description = "场地表")]
-public class Facility
+public class Venue
 {
     // 属性定义
     [Key]

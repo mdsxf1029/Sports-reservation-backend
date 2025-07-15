@@ -8,22 +8,19 @@ public class OracleDbContext(DbContextOptions<OracleDbContext> options) : DbCont
 {
     // 配置数据库上下文实体集
     public DbSet<Appointment> AppointmentSet { get; set; }
-    public DbSet<AppointmentCheckIn> AppointmentCheckInSet { get; set; }
     public DbSet<CheckIn> CheckInSet { get; set; }
     public DbSet<Comment> CommentSet { get; set; }
     public DbSet<CommentLike> CommentLikeSet { get; set; }
     public DbSet<CommentReport> CommentReportSet { get; set; }
-    public DbSet<Facility> FacilitySet { get; set; }
+    public DbSet<Venue> FacilitySet { get; set; }
     public DbSet<Post> PostSet { get; set; }
     public DbSet<PostComment> PostCommentSet { get; set; }
     public DbSet<PostLike> PostLikeSet { get; set; }
     public DbSet<PostReport> PostReportSet { get; set; }
-    public DbSet<Report> ReportSet { get; set; }
     public DbSet<User> UserSet { get; set; }
-    public DbSet<UserCheckIn> UserCheckInSet { get; set; }
-    public DbSet<UsersCollection> UsersCollectionSet { get; set; }
-    public DbSet<UsersComment> UsersCommentSet { get; set; }
-    public DbSet<UsersPost> UsersPostSet { get; set; }
+    public DbSet<UserCollection> UsersCollectionSet { get; set; }
+    public DbSet<UserComment> UsersCommentSet { get; set; }
+    public DbSet<UserPost> UsersPostSet { get; set; }
     
     // 重写 OnModelCreating 方法
     protected override void OnModelCreating(ModelBuilder modelBuilder)
