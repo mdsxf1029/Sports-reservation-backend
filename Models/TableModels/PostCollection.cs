@@ -7,9 +7,9 @@ using Microsoft.EntityFrameworkCore;
 namespace Sports_reservation_backend.Models.TableModels;
 
 [PrimaryKey(nameof(UserId), nameof(PostId))]
-[Table("POST_DISLIKE")]
-[SwaggerSchema(Description = "用户点踩赞记录表")]
-public class PostDislike
+[Table("POST_COLLECTION")]
+[SwaggerSchema(Description = "用户收藏记录表")]
+public class PostCollection
 {
     [Column("USER_ID")]
     [SwaggerSchema("用户ID")]
@@ -20,9 +20,9 @@ public class PostDislike
     public int PostId { get; set; }
 
     [Required]
-    [Column("DISLIKE_TIME")]
-    [SwaggerSchema("点踩时间")]
-    public DateTime DislikeTime { get; set; }
+    [Column("COLLECT_TIME")]
+    [SwaggerSchema("收藏时间")]
+    public DateTime CollectTime { get; set; }
 
     [ForeignKey(nameof(PostId))]
     public Post? Post { get; set; }

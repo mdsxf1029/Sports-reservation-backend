@@ -1,26 +1,25 @@
-﻿using System.ComponentModel.DataAnnotations.Schema;
-using Microsoft.EntityFrameworkCore;
+﻿using System.ComponentModel.DataAnnotations;
+using System.ComponentModel.DataAnnotations.Schema;
 using Swashbuckle.AspNetCore.Annotations;
 
 namespace Sports_reservation_backend.Models.TableModels;
 
-[Table("USERS_POST")]
-[PrimaryKey(nameof(UserId),nameof(PostId))]
-[SwaggerSchema("用户发帖表")]
+[Table("USER_POST")]
+[SwaggerSchema(Description = "用户发帖记录表")]
 public class UserPost
 {
-    // 数据定义
-    [Column("USER_ID")]
-    [ForeignKey("User")]
-    [SwaggerSchema(Description = "用户ID")]
-    public int UserId { get; set; }
-    
+    [Key]
     [Column("POST_ID")]
-    [ForeignKey("Post")]
-    [SwaggerSchema(Description = "帖子ID")]
+    [SwaggerSchema("帖子ID")]
     public int PostId { get; set; }
-    
-    // 关系定义
-    public User? User { get; set; }
+
+    [Column("USER_ID")]
+    [SwaggerSchema("用户ID")]
+    public int? UserId { get; set; }
+
+    [ForeignKey(nameof(PostId))]
     public Post? Post { get; set; }
+
+    [ForeignKey(nameof(UserId))]
+    public User? User { get; set; }
 }

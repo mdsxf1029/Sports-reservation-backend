@@ -4,62 +4,79 @@ using Swashbuckle.AspNetCore.Annotations;
 
 namespace Sports_reservation_backend.Models.TableModels;
 
-[Table("USER")]
+[Table("\"USER\"")]
 [SwaggerSchema(Description = "用户表")]
 public class User
 {
-    // 属性定义
     [Key]
-    [Column("ID")]
+    [Column("USER_ID")]
     [DatabaseGenerated(DatabaseGeneratedOption.Identity)]
     [SwaggerSchema(Description = "用户ID")]
     public int UserId { get; set; }
 
     [Required]
-    [Column("NAME")]
+    [Column("USER_NAME")]
     [MaxLength(50)]
     [SwaggerSchema(Description = "用户名")]
     public string Name { get; set; } = string.Empty;
-    
+
     [Required]
     [Column("TELEPHONE")]
     [MaxLength(20)]
     [SwaggerSchema(Description = "电话")]
     public string Telephone { get; set; } = string.Empty;
-    
+
     [Required]
     [Column("EMAIL")]
     [MaxLength(30)]
     [SwaggerSchema(Description = "邮箱")]
     public string Email { get; set; } = string.Empty;
-    
-    [Required]
-    [Column("PASSWORD")]
-    [MaxLength(30)]
-    [SwaggerSchema(Description = "密码")]
-    public string Password { get; set; } = string.Empty;
-    
+
     [Required]
     [Column("REGISTER_TIME")]
     [SwaggerSchema(Description = "注册日期")]
     public DateTime RegisterTime { get; set; }
-    
+
     [Required]
     [Column("POINTS")]
     [SwaggerSchema(Description = "积分值")]
     public int Points { get; set; }
-    
+
+    [Column("AVATAR_URL")]
+    [SwaggerSchema(Description = "头像")]
+    public byte[]? AvatarUrl { get; set; }
+
     [Required]
-    [Column("SEX")]
+    [Column("GENDER")]
     [MaxLength(10)]
     [SwaggerSchema(Description = "性别")]
-    public string Sex { get; set; } = string.Empty;
-    
+    public string Gender { get; set; } = string.Empty;
+
+    [Required]
+    [Column("BIRTHDAY")]
+    [SwaggerSchema(Description = "出生日期")]
+    public DateTime Birthday { get; set; }
+
+    [Required]
+    [Column("PROFILE")]
+    [SwaggerSchema(Description = "简介")]
+    public string Profile { get; set; } = string.Empty;
+
     [Required]
     [Column("REGION")]
     [MaxLength(255)]
     [SwaggerSchema(Description = "所处地区")]
     public string Region { get; set; } = string.Empty;
-    
-    
+
+    [Required]
+    [Column("PASSWORD")]
+    [MaxLength(30)]
+    [SwaggerSchema(Description = "密码")]
+    public string Password { get; set; } = string.Empty;
+
+    [Required]
+    [Column("ROLE")]
+    [MaxLength(20)]
+    [SwaggerSchema(Description = "角色")]
+    public string Role { get; set; } = string.Empty;
 }

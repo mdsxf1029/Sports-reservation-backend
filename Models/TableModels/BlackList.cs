@@ -1,47 +1,45 @@
-﻿using System.ComponentModel.DataAnnotations;
+﻿using System;
+using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
 using Swashbuckle.AspNetCore.Annotations;
 
 namespace Sports_reservation_backend.Models.TableModels;
 
 [Table("BLACKLIST")]
-[SwaggerSchema("黑名单表")]
+[SwaggerSchema(Description = "黑名单表（普通用户-管理员）")]
 public class BlackList
 {
     [Key]
     [Column("USER_ID")]
-    [ForeignKey("User")]
-    [SwaggerSchema("被惩罚ID")]
+    [SwaggerSchema("用户ID")]
     public int UserId { get; set; }
-    
-    [Required]
+
     [Column("MANAGER_ID")]
-    [ForeignKey("Manager")]
-    [SwaggerSchema("处理人ID")]
-    public int ManagerId { get; set; }
-    
+    [SwaggerSchema("管理员ID")]
+    public int? ManagerId { get; set; }
+
     [Required]
     [Column("BEGIN_TIME")]
-    [SwaggerSchema("惩罚开始时间")]
+    [SwaggerSchema("开始时间")]
     public DateTime BeginTime { get; set; }
-    
+
     [Required]
     [Column("END_TIME")]
-    [SwaggerSchema("惩罚结束时间")]
+    [SwaggerSchema("结束时间")]
     public DateTime EndTime { get; set; }
-    
-    [Required]
+
     [Column("BANNED_REASON")]
-    [StringLength(255)]
-    [SwaggerSchema("惩罚原因")]
-    public string BanReason { get; set; } = string.Empty;
-    
-    [Required]
+    [SwaggerSchema("封禁原因")]
+    public string? BannedReason { get; set; }
+
     [Column("BANNED_STATUS")]
     [StringLength(20)]
-    [SwaggerSchema("惩罚状态")]
-    public string BanStatus { get; set; } = string.Empty;
-    
+    [SwaggerSchema("封禁状态，valid或invalid")]
+    public string? BannedStatus { get; set; }
+
+    [ForeignKey(nameof(UserId))]
     public User? User { get; set; }
+
+    [ForeignKey(nameof(ManagerId))]
     public User? Manager { get; set; }
 }

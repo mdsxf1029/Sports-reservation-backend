@@ -4,44 +4,39 @@ using Swashbuckle.AspNetCore.Annotations;
 
 namespace Sports_reservation_backend.Models.TableModels;
 
-[Table("FACILITY")]
+[Table("VENUE")]
 [SwaggerSchema(Description = "场地表")]
 public class Venue
 {
-    // 属性定义
     [Key]
-    [Column("FACILITY_ID")]
-    [DatabaseGenerated(DatabaseGeneratedOption.Identity)]
-    [SwaggerSchema(Description = "场地ID")]
-    public int FacilityId { get; set; }
-    
+    [Column("VENUE_ID")]
+    [SwaggerSchema("场地ID")]
+    public int VenueId { get; set; }
+
     [Required]
-    [Column("FACILITY_NAME")]
-    [MaxLength(20)]
-    [SwaggerSchema(Description = "场地名称")]
-    public string FacilityName { get; set; }=string.Empty;
-    
+    [Column("VENUE_NAME")]
+    [StringLength(20)]
+    [SwaggerSchema("场地名称")]
+    public string VenueName { get; set; } = null!;
+
     [Required]
-    [Column("FACILITY_TYPE")]
-    [MaxLength(20)]
-    [SwaggerSchema(Description = "场地类型")]
-    public string FacilityType { get; set; }=string.Empty;
-    
+    [Column("VENUE_TYPE")]
+    [StringLength(20)]
+    [SwaggerSchema("场地类型")]
+    public string VenueType { get; set; } = null!;
+
     [Required]
-    [Column("FACILITY_LOCATION")]
-    [MaxLength(50)]
-    [SwaggerSchema(Description = "场地地点")]
-    public string FacilityLocation { get; set; }=string.Empty;
-    
-    [Required]
-    [Column("FACILITY_MAX_APPOINTMENT")]
-    [SwaggerSchema(Description = "最大人数")]
-    public int FacilityMaxAppointment { get; set; }
-    
-    [Required]
-    [Column("FACILITY_PUBLISH_STATUS")]
-    [MaxLength(20)]
-    [SwaggerSchema(Description = "场地发布状态")]
-    public string FacilityPublishStatus { get; set; } = string.Empty;
-    
+    [Column("VENUE_LOCATION")]
+    [StringLength(50)]
+    [SwaggerSchema("场地地点")]
+    public string VenueLocation { get; set; } = null!;
+
+    [Column("VENUE_CAPACITY")]
+    [SwaggerSchema("场地容量")]
+    public int? VenueCapacity { get; set; }
+
+    [Column("VENUE_STATUS")]
+    [StringLength(20)]
+    [SwaggerSchema("发布状态，open或close")]
+    public string? VenueStatus { get; set; }
 }
