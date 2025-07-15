@@ -15,23 +15,28 @@ public class Appointment
     public int AppointmentId { get; set; }
     
     [Required]
-    [Column("APPOINTMENT_BEGIN")]
+    [Column("BEGIN_TIME")]
     [SwaggerSchema(Description = "预约开始时间")]
-    public DateTime AppointmentBegin { get; set; }
+    public DateTime BeginTime { get; set; }
+    
+    [Required]
+    [Column("END_TIME")]
+    [SwaggerSchema(Description = "预约结束时间")]
+    public DateTime EndTime { get; set; }
     
     [Required]
     [Column("APPOINTMENT_STATUS")]
     [SwaggerSchema(Description = "预约状态")]
-    [MaxLength(20)]
+    [StringLength(20)]
     public string AppointmentStatus { get; set; }=string.Empty;
     
     [Required]
-    [Column("APPOINTMENT_APPLY_TIME")]
+    [Column("APPLY_TIME")]
     [SwaggerSchema(Description = "预约时间")]
     public DateTime AppointmentApplyTime { get; set; }
     
-    [Column("APPOINTMENT_CANCEL_TIME")]
-    [SwaggerSchema(Description = "取消时间")]
-    public DateTime AppointmentCancelTime { get; set; }
-    
+    [Required]
+    [Column("FINISH_TIME")]
+    [SwaggerSchema(Description = "实际结束时间")]
+    public DateTime FinishTime { get; set; }
 }

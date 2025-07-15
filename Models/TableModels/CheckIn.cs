@@ -9,25 +9,17 @@ namespace Sports_reservation_backend.Models.TableModels;
 public class CheckIn
 {
     [Key]
-    [Column("CHECKIN_ID")]
-    [DatabaseGenerated(DatabaseGeneratedOption.Identity)]
-    [SwaggerSchema(Description = "签到ID")]
-    public int CheckInId { get; set; }
+    [Column("APPOINTMENT_ID")]
+    [SwaggerSchema("订单ID")]
+    public int AppointmentId { get; set; }
+    
+    [Required]
+    [Column("USER_ID")]
+    [SwaggerSchema("用户ID")]
+    public DateTime UserId { get; set; }
     
     [Required]
     [Column("CHECKIN_TIME")]
-    [SwaggerSchema(Description = "签到时间")]
+    [SwaggerSchema("签到时间")]
     public DateTime CheckInTime { get; set; }
-    
-    [Required]
-    [Column("CHECKIN_PAY_AMOUNT")]
-    [SwaggerSchema(Description = "支付金额")]
-    public int CheckInPayAmount { get; set; }
-    
-    [Required]
-    [Column("CHECKIN_PAY_MODE")]
-    [MaxLength(20)]
-    [SwaggerSchema(Description = "支付方式")]
-    public string CheckInPayMode { get; set; }=string.Empty;
-    
 }
