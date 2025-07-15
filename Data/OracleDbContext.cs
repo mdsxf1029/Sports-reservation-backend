@@ -21,8 +21,8 @@ public class OracleDbContext(DbContextOptions<OracleDbContext> options) : DbCont
     public DbSet<ManagerPostReport> ManagerPostReportSet { get; set; }
     public DbSet<PointChange> PointChangeSet { get; set; }
     public DbSet<Post> PostSet { get; set; }
-    public DbSet<PostComment> PostCommentSet { get; set; }
     public DbSet<PostCollection> PostCollectionSet { get; set; }
+    public DbSet<PostComment> PostCommentSet { get; set; }
     public DbSet<PostDislike> PostDislikeSet { get; set; }
     public DbSet<PostLike> PostLikeSet { get; set; }
     public DbSet<PostReport> PostReportSet { get; set; }
@@ -30,19 +30,19 @@ public class OracleDbContext(DbContextOptions<OracleDbContext> options) : DbCont
     public DbSet<User> UserSet { get; set; }
     public DbSet<UserAppointment> UserAppointmentSet { get; set; }
     public DbSet<UserComment> UserCommentSet { get; set; }
-    public DbSet<UserPost> UserPostSet { get; set; }
+    public DbSet<UserPost> UsersPostSet { get; set; }
     public DbSet<UserViolation> UserViolationSet { get; set; }
     public DbSet<Venue> VenueSet { get; set; }
     public DbSet<VenueAppointment> VenueAppointmentSet { get; set; }
     public DbSet<VenueManager> VenueManagerSet { get; set; }
     public DbSet<VenueTimeSlot> VenueTimeSlotSet { get; set; }
     public DbSet<Violation> ViolationSet { get; set; }
-
+    
     // 重写 OnModelCreating 方法
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         base.OnModelCreating(modelBuilder);
-
-
+        
+        
     }
 }
