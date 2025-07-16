@@ -1,11 +1,13 @@
 ﻿using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
+using Microsoft.EntityFrameworkCore;
 using Swashbuckle.AspNetCore.Annotations;
 
 namespace Sports_reservation_backend.Models.TableModels;
 
 [Table("USERS_COLLECTION")]
 [SwaggerSchema("用户收藏")]
+[PrimaryKey(nameof(PostId), nameof(UserId))]
 public class PostCollection
 {
     // 数据定义

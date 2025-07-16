@@ -4,7 +4,7 @@ using Swashbuckle.AspNetCore.Annotations;
 
 namespace Sports_reservation_backend.Models.TableModels;
 
-[Table("\"USER\"")]
+[Table("USER")]
 [SwaggerSchema(Description = "用户表")]
 public class User
 {
@@ -43,9 +43,9 @@ public class User
     public int Points { get; set; }
 
     [Column("AVATAR_URL")]
-    [MaxLength(255)]
+    [StringLength(255)]
     [SwaggerSchema(Description = "头像")]
-    public string? AvatarUrl { get; set; }
+    public string AvatarUrl { get; set; } = string.Empty;
 
     [Required]
     [Column("GENDER")]
@@ -60,6 +60,7 @@ public class User
 
     [Required]
     [Column("PROFILE")]
+    [StringLength(512)]
     [SwaggerSchema(Description = "简介")]
     public string Profile { get; set; } = string.Empty;
 
