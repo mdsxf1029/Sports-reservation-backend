@@ -64,13 +64,11 @@ public class User
     [SwaggerSchema(Description = "简介")]
     public string Profile { get; set; } = string.Empty;
 
-    [Required]
     [Column("REGION")]
     [MaxLength(255)]
     [SwaggerSchema(Description = "所处地区")]
     public string Region { get; set; } = string.Empty;
 
-    [Required]
     [Column("PASSWORD")]
     [MaxLength(30)]
     [SwaggerSchema(Description = "密码")]
