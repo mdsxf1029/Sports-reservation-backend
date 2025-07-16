@@ -43,8 +43,9 @@ public class User
     public int Points { get; set; }
 
     [Column("AVATAR_URL")]
+    [MaxLength(255)]
     [SwaggerSchema(Description = "头像")]
-    public byte[]? AvatarUrl { get; set; }
+    public string? AvatarUrl { get; set; }
 
     [Required]
     [Column("GENDER")]

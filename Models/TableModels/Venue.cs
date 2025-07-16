@@ -14,9 +14,21 @@ public class Venue
     public int VenueId { get; set; }
 
     [Required]
+    [Column("VENUE_SUBNAME")]
+    [StringLength(20)]
+    [SwaggerSchema("小场地名称")]
+    public string VenueSubname { get; set; } = null!;
+
+    [Required]
+    [Column("VENUE_PICTURE_URL")]
+    [StringLength(255)]
+    [SwaggerSchema("场地图片")]
+    public string VenuePictureUrl { get; set; } = null!;
+
+    [Required]
     [Column("VENUE_NAME")]
     [StringLength(20)]
-    [SwaggerSchema("场地名称")]
+    [SwaggerSchema("场馆名称")]
     public string VenueName { get; set; } = null!;
 
     [Required]

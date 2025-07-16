@@ -6,7 +6,7 @@ create table "USER" (
    email         varchar(30), -- 邮箱
    register_time date, -- 注册时间
    points        number, -- 积分
-   avatar_url    blob, -- 头像
+   avatar_url    varchar(255), -- 头像
    gender        varchar(10) check ( gender in ( 'male',
                                           'female',
                                           'unknown' ) ), -- 性别
@@ -17,18 +17,6 @@ create table "USER" (
    role          varchar(20) check ( role in ( 'normal',
                                       'manager' ) )
 );
-
--- 创建 sequence 用于自增
-create sequence user_id_seq start with 1 increment by 1;
-
--- 创建触发器，在插入时自动赋值 user_id
-create or replace trigger trg_user_id before
-   insert on "USER"
-   for each row
-begin
-   :new.user_id := user_id_seq.nextval;  -- 使用 SEQUENCE 生成用户ID
-end;
-/
 
 /*帖子*/
 create table post (
@@ -44,18 +32,6 @@ create table post (
    dislike_count    number --点踩量
 );
 
---创建 sequence 用于post_id自增
-create sequence post_id_seq start with 1 increment by 1;
-
--- 创建触发器，在插入时自动赋值 post_id
-create or replace trigger trg_post_id before
-   insert on post
-   for each row
-begin
-   :new.post_id := post_id_seq.nextval;
-end;
-/
-
 /*评论*/
 create table "COMMENT" (
    comment_id      number primary key, -- 评论id
@@ -66,18 +42,6 @@ create table "COMMENT" (
    like_count      number, --点赞量
    dislike_count   number --点踩量
 );
-
--- 创建 sequence 用于 comment_id 自增
-create sequence comment_id_seq start with 1 increment by 1;
-
--- 创建触发器，在插入时自动赋值 comment_id
-create or replace trigger trg_comment_id before
-   insert on "COMMENT"
-   for each row
-begin
-   :new.comment_id := comment_id_seq.nextval;
-end;
-/
 
 /*帖子举报*/
 create table post_report (
@@ -95,69 +59,30 @@ create table post_report (
                                                         'rejected' ) ) -- 举报状态
 );
 
--- 创建 SEQUENCE 用于 report_id 自增
-create sequence report_id_seq start with 1 increment by 1;
-
--- 创建触发器，在插入时自动赋值 report_id
-create or replace trigger trg_report_id before
-   insert on post_report
-   for each row
-begin
-   -- 使用 NEXTVAL 获取序列的下一个值
-   :new.report_id := report_id_seq.nextval;
-end;
-/
-
-/* 评论举报表 */
+/*评论举报*/
 create table comment_report (
    report_id           number primary key, -- 举报id
    reporter_id         number
-      references "USER" ( user_id ), -- 举报人id
+      references "USER" ( user_id ), --举报人id
    reported_user_id    number
-      references "USER" ( user_id ), -- 被举报人id
+      references "USER" ( user_id ), --被举报人id
    reported_comment_id number
-      references "COMMENT" ( comment_id ), -- 被举报评论id
-   report_reason       clob, -- 举报原因
-   report_time         date, -- 举报时间
+      references "COMMENT" ( comment_id ), --被举报帖子id
+   report_reason       clob, -- 文本
+   report_time         date, -- 发布时间
    report_status       varchar(20) check ( report_status in ( 'checking',
                                                         'accepted',
                                                         'rejected' ) ) -- 举报状态
 );
 
--- 创建 SEQUENCE 用于 report_id 自增
-create sequence comment_report_id_seq start with 1 increment by 1;
-
--- 创建触发器，在插入时自动赋值 report_id
-create or replace trigger trg_comment_report_id before
-   insert on comment_report
-   for each row
-begin
-   :new.report_id := comment_report_id_seq.nextval;
-end;
-/
-
-
-/* 开放时间段表 */
+/*开放时间段*/
 create table time_slot (
-   time_slot_id number primary key, -- 开放时间段id
-   begin_time   date, -- 时段起始时间
-   end_time     date  -- 时段结束时间
+   time_slot_id number primary key, --开放时间段id
+   begin_time   date, --时段起始时间
+   end_time     date  --时段结束时间
 );
 
--- 创建 SEQUENCE 用于 time_slot_id 自增
-create sequence time_slot_id_seq start with 1 increment by 1;
-
--- 创建触发器，在插入时自动赋值 time_slot_id
-create or replace trigger trg_time_slot_id before
-   insert on time_slot
-   for each row
-begin
-   :new.time_slot_id := time_slot_id_seq.nextval;
-end;
-/
-
-
-/* 预约表 */
+/*预约*/
 create table appointment (
    appointment_id     number primary key, -- 预约id
    appointment_status varchar(20) check ( appointment_status in ( 'upcoming',
@@ -168,23 +93,10 @@ create table appointment (
    apply_time         date, -- 申请时间
    finish_time        date, -- 实际结束时间
    begin_time         date, -- 预约时段起点
-   end_time           date -- 预约结束时间
+   end_time           date --预约结束时间
 );
 
--- 创建 SEQUENCE 用于 appointment_id 自增
-create sequence appointment_id_seq start with 1 increment by 1;
-
--- 创建触发器，在插入时自动赋值 appointment_id
-create or replace trigger trg_appointment_id before
-   insert on appointment
-   for each row
-begin
-   :new.appointment_id := appointment_id_seq.nextval;
-end;
-/
-
-
-/* 违约记录表 */
+/*违约记录*/
 create table violation (
    violation_id      number primary key, -- 违约id
    appointment_id    number
@@ -194,115 +106,52 @@ create table violation (
    violation_penalty clob -- 处罚措施
 );
 
--- 创建 SEQUENCE 用于 violation_id 自增
-create sequence violation_id_seq start with 1 increment by 1;
-
--- 创建触发器，在插入时自动赋值 violation_id
-create or replace trigger trg_violation_id before
-   insert on violation
-   for each row
-begin
-   :new.violation_id := violation_id_seq.nextval;
-end;
-/
-
-
-/* 场地表 */
+/*场地*/
 create table venue (
-   venue_id       number primary key, -- 场地id
-   venue_name     varchar(20) not null, -- 场地名称
-   venue_type     varchar(20) not null, -- 场地类型
-   venue_location varchar(50) not null, -- 场地地点
-   venue_capacity number, -- 场地容量
-   venue_status   varchar(20) check ( venue_status in ( 'open',
+   venue_id          number primary key, -- 场地id
+   venue_subname     varchar(20) not null, -- 小场地名称
+   venue_picture_url varchar(255) not null, --场馆图片
+   venue_name        varchar(20) not null, -- 场馆名称
+   venue_type        varchar(20) not null, -- 场地类型
+   venue_location    varchar(50) not null, -- 场地地址
+   venue_capacity    number, --场地容量
+   venue_status      varchar(20) check ( venue_status in ( 'open',
                                                       'close' ) ) -- 发布状态
 );
 
--- 创建 SEQUENCE 用于 venue_id 自增
-create sequence venue_id_seq start with 1 increment by 1;
-
--- 创建触发器，在插入时自动赋值 venue_id
-create or replace trigger trg_venue_id before
-   insert on venue
-   for each row
-begin
-   :new.venue_id := venue_id_seq.nextval;
-end;
-/
-
-
-/* 积分变化表 */
+/*积分变化*/
 create table point_change (
    change_id     number primary key, -- 变化id
    user_id       number
-      references "USER" ( user_id ), -- 用户id
+      references "USER" ( user_id ), --用户id
    change_amount number, -- 变化数量
    change_time   date, -- 变化时间
    change_reason clob -- 变化原因
 );
 
--- 创建 SEQUENCE 用于 change_id 自增
-create sequence point_change_id_seq start with 1 increment by 1;
-
--- 创建触发器，在插入时自动赋值 change_id
-create or replace trigger trg_point_change_id before
-   insert on point_change
-   for each row
-begin
-   :new.change_id := point_change_id_seq.nextval;
-end;
-/
-
-
-/* 维护记录表 */
+/*维护记录*/
 create table maintenance (
    maintenance_id      number primary key, -- 维护id
    user_id             number
       references "USER" ( user_id ), -- 用户id
    venue_id            number
-      references venue ( venue_id ), -- 场地id
+      references venue ( venue_id ), --场地id
    maintenance_time    date, -- 维护时间
    maintenance_content clob -- 维护内容
 );
 
--- 创建 SEQUENCE 用于 maintenance_id 自增
-create sequence maintenance_id_seq start with 1 increment by 1;
-
--- 创建触发器，在插入时自动赋值 maintenance_id
-create or replace trigger trg_maintenance_id before
-   insert on maintenance
-   for each row
-begin
-   :new.maintenance_id := maintenance_id_seq.nextval;
-end;
-/
-
-
-/* 账单表 */
+/*账单*/
 create table bill (
-   bill_id        number primary key, -- 账单id
+   bill_id        number primary key, --账单id
    bill_status    varchar(20) check ( bill_status in ( 'completed',
-                                                    'pending' ) ), -- 支付状态
-   bill_amount    number, -- 账单金额
-   begin_time     date, -- 账单创建时间
+                                                    'pending' ) ), --支付状态
+   bill_amount    number, --账单金额
+   begin_time     date, --账单创建时间
    user_id        number
-      references "USER" ( user_id ), -- 用户id
+      references "USER" ( user_id ), --用户id
    appointment_id number
       references appointment ( appointment_id ) -- 预约id
 );
-
--- 创建 SEQUENCE 用于 bill_id 自增
-create sequence bill_id_seq start with 1 increment by 1;
-
--- 创建触发器，在插入时自动赋值 bill_id
-create or replace trigger trg_bill_id before
-   insert on bill
-   for each row
-begin
-   :new.bill_id := bill_id_seq.nextval;
-end;
-/
-
 
 ------------------------------------------------------------------------------------------------------------------------------------------------------
 ------------------------------------------------------------------------------------------------------------------------------------------------------
