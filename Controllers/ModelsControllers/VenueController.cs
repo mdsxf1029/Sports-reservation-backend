@@ -3,44 +3,55 @@ using Microsoft.EntityFrameworkCore;
 using Sports_reservation_backend.Data;
 using Sports_reservation_backend.Models.TableModels;
 using Swashbuckle.AspNetCore.Annotations;
+using System.Collections.Generic;
+using System.Threading.Tasks;
 
 namespace Sports_reservation_backend.Controllers.ModelsControllers;
 
 [Route("api/venue")]
 [ApiController]
-[SwaggerTag("场地相关 API ")]
-public class VenueController(OracleDbContext context) : ControllerBase
+[SwaggerTag("场地相关 API")]
+public class VenueController : ControllerBase
 {
-    // 获得场地表所有数据
+    private readonly OracleDbContext context;
+
+    public VenueController(OracleDbContext context)
+    {
+        this.context = context;
+    }
+
+    // 获取所有场地数据
     [HttpGet]
+    [SwaggerOperation(Summary = "获取所有场地数据")]
     [SwaggerResponse(200, "获取数据成功")]
     [SwaggerResponse(500, "服务器内部错误")]
-    public async Task<ActionResult<IEnumerable<Venue>>> GetVenue()
+    public async Task<ActionResult<IEnumerable<Venue>>> GetVenues()
     {
         try
         {
-            return Ok(await context.VenueSet.ToListAsync());
+            var venues = await context.VenueSet.ToListAsync();
+            return Ok(venues);
         }
         catch (Exception ex)
         {
             return StatusCode(500, $"Internal server error: {ex.Message}");
         }
     }
-    
-    // 获得指定主键的场地数据
+
+    // 根据主键获取指定场地数据
     [HttpGet("{id:int}")]
+    [SwaggerOperation(Summary = "根据主键（ID）获取场地数据")]
     [SwaggerResponse(200, "获取数据成功")]
     [SwaggerResponse(404, "未找到数据")]
     [SwaggerResponse(500, "服务器内部错误")]
-    public async Task<ActionResult<Venue>> GetVenueByPk(int id)
+    public async Task<ActionResult<Venue>> GetVenueById(int id)
     {
         try
         {
             var venue = await context.VenueSet.FindAsync(id);
             if (venue == null)
-            {
-                return NotFound($"No corresponding data found for ID: {id}");
-            }
+                return NotFound($"No corresponding data found for Venue ID: {id}");
+
             return Ok(venue);
         }
         catch (Exception ex)
@@ -48,95 +59,84 @@ public class VenueController(OracleDbContext context) : ControllerBase
             return StatusCode(500, $"Internal server error: {ex.Message}");
         }
     }
-    
-    // 更新指定主键的场地数据
-    [HttpPut("{id:int}")]
-    [SwaggerResponse(200, "更新数据成功")]
+
+    // 添加场地数据
+    [HttpPost]
+    [SwaggerOperation(Summary = "添加场地数据")]
+    [SwaggerResponse(201, "添加数据成功")]
     [SwaggerResponse(400, "请求无效")]
-    [SwaggerResponse(404, "未找到数据")]
     [SwaggerResponse(500, "服务器内部错误")]
-    public async Task<ActionResult> UpdateVenue(int id,[FromBody] Venue venue)
+    public async Task<IActionResult> PostVenue([FromBody] Venue venue)
     {
-        if (!ModelState.IsValid)
-        {
-            return BadRequest(ModelState);
-        }
-        
-        if (id != venue.VenueId)
-        {
-            return BadRequest("ID mismatch");
-        }
-        
-        var curVenue = await context.VenueSet.FindAsync(id);
-        if (curVenue == null)
-        {
-            return NotFound($"No corresponding data found for ID: {id}");
-        }
-        
-        context.Entry(curVenue).CurrentValues.SetValues(venue);
-        context.Entry(curVenue).State = EntityState.Modified;
-        
         try
         {
+            if (!ModelState.IsValid)
+                return BadRequest(ModelState);
+
+            context.VenueSet.Add(venue);
             await context.SaveChangesAsync();
+
+            return CreatedAtAction(nameof(GetVenueById), new { id = venue.VenueId }, venue);
         }
         catch (Exception ex)
         {
             return StatusCode(500, $"Internal server error: {ex.Message}");
         }
-        
-        return Ok($"Data with ID: {id} has been updated successfully.");
     }
-    
-    // 添加场地数据
-    [HttpPost]
-    
-    public async Task<IActionResult> PostVenue([FromBody] Venue venue)
-    {
-        if (!ModelState.IsValid)
-        {
-            return BadRequest(ModelState);
-        }
-        
-        context.VenueSet.Add(venue);
-        await context.SaveChangesAsync();
-        
-        return CreatedAtAction(nameof(PostVenue), new { id = venue.VenueId }, venue);
-    }
-    
-    // 删除场地数据
-    [HttpDelete("{id:int}")]
-    [SwaggerResponse(200, "删除数据成功")]
-    [SwaggerResponse(404, "未找到对应数据")]
+
+    // 更新指定 ID 的场地
+    [HttpPut("{id:int}")]
+    [SwaggerOperation(Summary = "更新指定 ID 的场地数据")]
+    [SwaggerResponse(200, "更新成功")]
     [SwaggerResponse(400, "请求无效")]
+    [SwaggerResponse(404, "未找到数据")]
     [SwaggerResponse(500, "服务器内部错误")]
-    public async Task<ActionResult<Venue>> DeleteVenueByPk(int id)
+    public async Task<IActionResult> PutVenue(int id, [FromBody] Venue venue)
+    {
+        try
+        {
+            if (id != venue.VenueId)
+                return BadRequest("The ID in URL does not match the venue ID in the request body.");
+
+            if (!await context.VenueSet.AnyAsync(v => v.VenueId == id))
+                return NotFound($"No venue found with ID: {id}");
+
+            if (!ModelState.IsValid)
+                return BadRequest(ModelState);
+
+            context.Entry(venue).State = EntityState.Modified;
+            await context.SaveChangesAsync();
+
+            return Ok(new { code = 200, message = $"Venue with ID {id} updated successfully." });
+        }
+        catch (Exception ex)
+        {
+            return StatusCode(500, $"Internal server error: {ex.Message}");
+        }
+    }
+
+    // 删除指定 ID 的场地
+    [HttpDelete("{id:int}")]
+    [SwaggerOperation(Summary = "删除指定 ID 的场地数据")]
+    [SwaggerResponse(200, "删除成功")]
+    [SwaggerResponse(404, "未找到数据")]
+    [SwaggerResponse(500, "服务器内部错误")]
+    public async Task<IActionResult> DeleteVenue(int id)
     {
         try
         {
             var venue = await context.VenueSet.FindAsync(id);
             if (venue == null)
-            {
-                return NotFound($"No corresponding data found for ID: {id}");
-            }
-            
+                return NotFound($"No venue found with ID: {id}");
+
             context.VenueSet.Remove(venue);
             await context.SaveChangesAsync();
-            return Ok($"Data with ID: {id} has been deleted successfully.");
+
+            return Ok(new { code = 200, message = $"Venue with ID {id} deleted successfully." });
         }
         catch (Exception ex)
         {
             return StatusCode(500, $"Internal server error: {ex.Message}");
         }
     }
-    
-    // 根据场地类型筛选
-    
-    
-    // 根据场地名称筛选
-
-
-    // 根据场地位置筛选
-    
-    
 }

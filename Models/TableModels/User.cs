@@ -11,14 +11,14 @@ public class User
     [Key]
     [Column("USER_ID")]
     [DatabaseGenerated(DatabaseGeneratedOption.Identity)]
-    [SwaggerSchema(Description = "用户ID")]
+    [SwaggerSchema(Description = "用户ID", ReadOnly = true)]
     public int UserId { get; set; }
 
     [Required]
     [Column("USER_NAME")]
     [MaxLength(50)]
     [SwaggerSchema(Description = "用户名")]
-    public string Name { get; set; } = string.Empty;
+    public string UserName { get; set; } = string.Empty;
 
     [Required]
     [Column("TELEPHONE")]
