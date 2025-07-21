@@ -7,9 +7,9 @@ using Microsoft.EntityFrameworkCore;
 namespace Sports_reservation_backend.Models.TableModels;
 
 [PrimaryKey(nameof(UserId), nameof(CommentId))]
-[Table("COMMENT_LIKE")]
-[SwaggerSchema(Description = "用户评论点赞记录表")]
-public class CommentLike
+[Table("COMMENT_DISLIKE")]
+[SwaggerSchema(Description = "用户评论点踩赞记录表")]
+public class CommentDislike
 {
     [Column("USER_ID")]
     [SwaggerSchema("用户ID")]
@@ -20,9 +20,9 @@ public class CommentLike
     public int CommentId { get; set; }
 
     [Required]
-    [Column("LIKE_TIME")]
-    [SwaggerSchema("点赞时间")]
-    public DateTime LikeTime { get; set; }
+    [Column("DISLIKE_TIME")]
+    [SwaggerSchema("点踩时间")]
+    public DateTime DislikeTime { get; set; }
 
     [ForeignKey(nameof(CommentId))]
     public Comment? Comment { get; set; }

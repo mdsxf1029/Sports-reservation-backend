@@ -1,13 +1,12 @@
-﻿using System;
-using System.ComponentModel.DataAnnotations;
+﻿using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
 using Swashbuckle.AspNetCore.Annotations;
 
 namespace Sports_reservation_backend.Models.TableModels;
 
-[Table("CHECKIN")]
-[SwaggerSchema(Description = "签到表")]
-public class CheckIn
+[Table("USER_APPOINTMENT")]
+[SwaggerSchema(Description = "用户预约记录与结果通知表")]
+public class UserAppointment
 {
     [Key]
     [Column("APPOINTMENT_ID")]
@@ -18,13 +17,9 @@ public class CheckIn
     [SwaggerSchema("用户ID")]
     public int? UserId { get; set; }
 
-    [Column("CHECKIN_TIME")]
-    [SwaggerSchema("签到时间")]
-    public DateTime? CheckinTime { get; set; }
+    [ForeignKey(nameof(UserId))]
+    public User? User { get; set; }
 
     [ForeignKey(nameof(AppointmentId))]
     public Appointment? Appointment { get; set; }
-
-    [ForeignKey(nameof(UserId))]
-    public User? User { get; set; }
 }

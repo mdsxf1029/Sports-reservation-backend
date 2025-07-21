@@ -1,35 +1,42 @@
-﻿using System.ComponentModel.DataAnnotations;
+using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
 using Swashbuckle.AspNetCore.Annotations;
 
-namespace Sports_reservation_backend.Models.TableModels;
-
-[Table("COMMENTS")]
-[SwaggerSchema(Description = "评论表")]
-public class Comment
+namespace Sports_reservation_backend.Models.TableModels
 {
-    // 属性定义
-    [Key]
-    [Column("COMMENTS_ID")]
-    [DatabaseGenerated(DatabaseGeneratedOption.Identity)]
-    [SwaggerSchema(Description = "评论ID")]
-    public int CommentId { get; set; }
-    
-    [Required]
-    [Column("COMMENTS_COMMENT")]
-    [SwaggerSchema(Description = "评论内容")]
-    [MaxLength]
-    public string CommentContent { get; set; } =string.Empty;
-    
-    [Required]
-    [Column("COMMENTS_PUBLISH_TIME")]
-    [SwaggerSchema(Description = "评论发布时间")]
-    public DateTime CommentPublishTime { get; set; }
-    
-    [Required]
-    [Column("COMMENTS_PUBLISH_STATUS")]
-    [SwaggerSchema(Description = "发布状态")]
-    [MaxLength(20)]
-    public string CommentPublishStatus { get; set; } = string.Empty;
-    
+    [Table("\"COMMENT\"")]
+    [SwaggerSchema(Description = "评论表")]
+    public class Comment
+    {
+        [Key]
+        [Column("COMMENT_ID")]
+        [SwaggerSchema(Description = "评论ID")]
+        public int CommentId { get; set; }
+
+        [Required]
+        [Column("COMMENT_CONTENT")]
+        [SwaggerSchema(Description = "评论内容")]
+        public string CommentContent { get; set; } = string.Empty;
+
+        [Required]
+        [Column("COMMENT_TIME")]
+        [SwaggerSchema(Description = "发布时间")]
+        public DateTime CommentTime { get; set; }
+
+        [Required]
+        [Column("COMMENT_STATUS")]
+        [SwaggerSchema(Description = "发布状态")]
+        [MaxLength(20)]
+        public string CommentStatus { get; set; } = string.Empty;
+
+        [Required]
+        [Column("LIKE_COUNT")]
+        [SwaggerSchema(Description = "点赞数")]
+        public int LikeCount { get; set; }
+
+        [Required]
+        [Column("DISLIKE_COUNT")]
+        [SwaggerSchema(Description = "点踩数")]
+        public int DislikeCount { get; set; }
+    }
 }

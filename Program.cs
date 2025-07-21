@@ -1,7 +1,47 @@
+using Microsoft.AspNetCore.Server.Kestrel.Core;
 using Microsoft.OpenApi.Models;
+using Microsoft.EntityFrameworkCore;
+
+using Sports_reservation_backend.Data;
+
+var config = new ConfigurationBuilder()
+    .SetBasePath(Directory.GetCurrentDirectory())
+    .AddJsonFile("config.json")
+    .Build();
 
 // 创建web应用构建器
 var builder = WebApplication.CreateBuilder(args);
+
+builder.Services.AddCors(options =>
+{
+    options.AddPolicy("AllowAll", policy =>
+    {
+        policy.AllowAnyOrigin().AllowAnyMethod().AllowAnyHeader();
+    });
+});
+
+builder.Services.AddDbContext<OracleDbContext>(options =>
+{
+    var connectionString = "User Id="
+                           + config["DatabaseConfig:UserId"]
+                           + ";Password="
+                           + config["DatabaseConfig:Password"]
+                           + ";Data Source="
+                           + config["DatabaseConfig:Host"]
+                           + ":"
+                           + config["DatabaseConfig:Port"]
+                           + "/"
+                           + config["DatabaseConfig:ServiceName"] + ";";
+    options.UseOracle(connectionString, oracleOptions =>
+    {
+        // TODO 额外的oracle配置
+    })
+    .LogTo(Console.WriteLine, LogLevel.Information);
+});
+
+
+
+builder.Services.Configure<KestrelServerOptions>(options => { options.Limits.MaxRequestBodySize = null; });
 
 builder.Services.AddControllers(); // 添加服务到容器
 
@@ -34,6 +74,8 @@ app.UseSwaggerUI(c => // 启用swaggerUI
     }
 );
 
+app.UseCors("AllowAll"); 
 app.UseHttpsRedirection(); // 启动HTTPS重定向中间件 
 app.MapControllers(); // 将控制器映射到路由
 app.Run(); // 启动应用程序并开始处理请求
+

@@ -4,22 +4,22 @@ using Swashbuckle.AspNetCore.Annotations;
 
 namespace Sports_reservation_backend.Models.TableModels;
 
-[Table("POST_COMMENT")]
-[SwaggerSchema(Description = "帖子评论记录")]
-public class PostComment
+[Table("USER_POST")]
+[SwaggerSchema(Description = "用户发帖记录表")]
+public class UserPost
 {
+    [Key]
     [Column("POST_ID")]
     [SwaggerSchema("帖子ID")]
-    public int? PostId { get; set; }
+    public int PostId { get; set; }
 
-    [Key]
-    [Column("COMMENT_ID")]
-    [SwaggerSchema("评论ID")]
-    public int CommentId { get; set; }
+    [Column("USER_ID")]
+    [SwaggerSchema("用户ID")]
+    public int? UserId { get; set; }
 
     [ForeignKey(nameof(PostId))]
     public Post? Post { get; set; }
 
-    [ForeignKey(nameof(CommentId))]
-    public Comment? Comment { get; set; }
+    [ForeignKey(nameof(UserId))]
+    public User? User { get; set; }
 }
