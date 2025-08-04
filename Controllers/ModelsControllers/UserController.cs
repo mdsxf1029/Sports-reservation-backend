@@ -62,7 +62,9 @@ public class UserController(OracleDbContext context) : ControllerBase
         try
         {
             if (!ModelState.IsValid)
+            {
                 return BadRequest(ModelState);
+            }
 
             context.UserSet.Add(user);
             await context.SaveChangesAsync();
@@ -87,18 +89,24 @@ public class UserController(OracleDbContext context) : ControllerBase
         try
         {
             if (id != user.UserId)
+            {
                 return BadRequest("The ID in URL does not match the user ID in the request body.");
+            }
 
             if (!await context.UserSet.AnyAsync(u => u.UserId == id))
+            {
                 return NotFound($"No user found with ID: {id}");
+            }
 
             if (!ModelState.IsValid)
+            {
                 return BadRequest(ModelState);
+            }
 
             context.Entry(user).State = EntityState.Modified;
             await context.SaveChangesAsync();
 
-            return Ok(new { code = 200, message = $"User with ID {id} changed successfully." });
+            return Ok($"User with ID {id} changed successfully.");
         }
         catch (Exception ex)
         {
@@ -118,7 +126,9 @@ public class UserController(OracleDbContext context) : ControllerBase
         {
             var user = await context.UserSet.FindAsync(id);
             if (user == null)
+            {
                 return NotFound($"No user found with ID: {id}");
+            }
 
             context.UserSet.Remove(user);
             await context.SaveChangesAsync();

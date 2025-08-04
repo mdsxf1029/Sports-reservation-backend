@@ -1,7 +1,9 @@
+using System.Text;
 using Microsoft.AspNetCore.Server.Kestrel.Core;
 using Microsoft.OpenApi.Models;
 using Microsoft.EntityFrameworkCore;
-
+using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.IdentityModel.Tokens;
 using Sports_reservation_backend.Data;
 
 var config = new ConfigurationBuilder()
@@ -20,6 +22,7 @@ builder.Services.AddCors(options =>
     });
 });
 
+// 数据库
 builder.Services.AddDbContext<OracleDbContext>(options =>
 {
     var connectionString = "User Id="
@@ -39,7 +42,25 @@ builder.Services.AddDbContext<OracleDbContext>(options =>
     .LogTo(Console.WriteLine, LogLevel.Information);
 });
 
-
+// JWT鉴权
+builder.Services.AddAuthentication(options =>
+{
+    options.DefaultAuthenticateScheme = JwtBearerDefaults.AuthenticationScheme;
+    options.DefaultChallengeScheme = JwtBearerDefaults.AuthenticationScheme;
+})
+.AddJwtBearer(options =>
+{
+    options.TokenValidationParameters = new TokenValidationParameters
+    {
+        ValidateIssuer = true,
+        ValidateAudience = true,
+        ValidateLifetime = true,
+        ValidateIssuerSigningKey = true,
+        ValidIssuer = config["Jwt:Issuer"],
+        ValidAudience = config["Jwt:Audience"],
+        IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(builder.Configuration["Jwt:SecretKey"]!))
+    };
+});
 
 builder.Services.Configure<KestrelServerOptions>(options => { options.Limits.MaxRequestBodySize = null; });
 
@@ -78,4 +99,3 @@ app.UseCors("AllowAll");
 app.UseHttpsRedirection(); // 启动HTTPS重定向中间件 
 app.MapControllers(); // 将控制器映射到路由
 app.Run(); // 启动应用程序并开始处理请求
-
