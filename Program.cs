@@ -66,9 +66,9 @@ builder.Services.Configure<KestrelServerOptions>(options => { options.Limits.Max
 
 builder.Services.AddControllers(); // 添加服务到容器
 
-builder.Services.AddSwaggerGen(c => 
+builder.Services.AddSwaggerGen(c =>
     {
-        c.SwaggerDoc("api" ,new OpenApiInfo
+        c.SwaggerDoc("api", new OpenApiInfo
         {
             Title = "运动场地预约系统 | 数据库网络应用程序接口 | Database Web API",
             Description = """
@@ -90,12 +90,12 @@ app.UseSwagger(); // 启用swagger中间件
 app.UseSwaggerUI(c => // 启用swaggerUI
     {
         c.SwaggerEndpoint("/swagger/api/swagger.json", "api");
-        c.RoutePrefix = string.Empty; 
+        c.RoutePrefix = string.Empty;
         c.DocumentTitle = "运动场地预约系统 - API";
     }
 );
 
-app.UseCors("AllowAll"); 
+app.UseCors("AllowAll");
 app.UseHttpsRedirection(); // 启动HTTPS重定向中间件 
 app.MapControllers(); // 将控制器映射到路由
 app.Run(); // 启动应用程序并开始处理请求
