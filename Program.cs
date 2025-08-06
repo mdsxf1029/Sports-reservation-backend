@@ -67,16 +67,39 @@ builder.Services.Configure<KestrelServerOptions>(options => { options.Limits.Max
 builder.Services.AddControllers(); // 添加服务到容器
 
 builder.Services.AddSwaggerGen(c =>
+{
+    c.SwaggerDoc("api", new OpenApiInfo
     {
-        c.SwaggerDoc("api", new OpenApiInfo
+        Title = "运动场地预约系统 | 数据库网络应用程序接口 | Database Web API",
+        Description = "欢迎来到我们的运动场地预约系统。在这里你可以浏览我们的数据库网络应用程序。"
+    });
+
+    // ✅ 加入 JWT 支持
+    c.AddSecurityDefinition("Bearer", new OpenApiSecurityScheme
+    {
+        Description = "JWT 授权，请输入: Bearer {token}",
+        Name = "Authorization",
+        In = ParameterLocation.Header,
+        Type = SecuritySchemeType.ApiKey,
+        Scheme = "Bearer"
+    });
+
+    c.AddSecurityRequirement(new OpenApiSecurityRequirement
+    {
         {
-            Title = "运动场地预约系统 | 数据库网络应用程序接口 | Database Web API",
-            Description = """
-                          欢迎来到我们的运动场地预约系统。在这里你可以浏览我们的数据库网络应用程序。
-                          """
-        });
-    }
-);
+            new OpenApiSecurityScheme
+            {
+                Reference = new OpenApiReference
+                {
+                    Type = ReferenceType.SecurityScheme,
+                    Id = "Bearer"
+                }
+            },
+            Array.Empty<string>()
+        }
+    });
+});
+
 
 // 构建web服务
 var app = builder.Build();
@@ -97,5 +120,7 @@ app.UseSwaggerUI(c => // 启用swaggerUI
 
 app.UseCors("AllowAll");
 app.UseHttpsRedirection(); // 启动HTTPS重定向中间件 
+app.UseAuthentication();   //  JWT 认证中间件（一定在 Authorization 之前）
+app.UseAuthorization();    //  授权中间件
 app.MapControllers(); // 将控制器映射到路由
 app.Run(); // 启动应用程序并开始处理请求
