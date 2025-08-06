@@ -5,5 +5,8 @@
     "Host": "47.83.188.207",
     "Port": "1521",
     "ServiceName": "FREE"
+  },
+  "Jwt": {
+    
   }
 }

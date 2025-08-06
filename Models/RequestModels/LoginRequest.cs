@@ -1,16 +1,9 @@
-using System.ComponentModel.DataAnnotations;
+namespace Sports_reservation_backend.Models.RequestModels;
 
-namespace Sports_reservation_backend.Models.RequestModels
+public class LoginRequest
 {
-    public class LoginRequest
-    {
-        [Required(ErrorMessage = "邮箱是必填项")]
-        [EmailAddress(ErrorMessage = "邮箱格式不正确")]
-        [MaxLength(30)]
-        public string Email { get; set; } = string.Empty;
-
-        [Required(ErrorMessage = "密码是必填项")]
-        [MaxLength(30)]
-        public string Password { get; set; } = string.Empty;
-    }
+    public required string Role { get; set; }
+    public required string Email { get; set; }
+    public required string Password { get; set; }
+    public int Way { get; set; } // 预留字段，暂不处理
 }
