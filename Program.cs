@@ -5,6 +5,8 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.IdentityModel.Tokens;
 using Sports_reservation_backend.Data;
+using Microsoft.Extensions.FileProviders;
+using Sports_reservation_backend.Utils;
 
 var config = new ConfigurationBuilder()
     .SetBasePath(Directory.GetCurrentDirectory())
@@ -12,7 +14,11 @@ var config = new ConfigurationBuilder()
     .Build();
 
 // 创建web应用构建器
-var builder = WebApplication.CreateBuilder(args);
+var builder = WebApplication.CreateBuilder(new WebApplicationOptions
+{
+    Args = args,
+    WebRootPath = "wwwroot"
+});
 
 builder.Services.AddCors(options =>
 {
@@ -21,6 +27,8 @@ builder.Services.AddCors(options =>
         policy.AllowAnyOrigin().AllowAnyMethod().AllowAnyHeader();
     });
 });
+
+var env = builder.Environment;
 
 // 数据库
 builder.Services.AddDbContext<OracleDbContext>(options =>
@@ -74,7 +82,7 @@ builder.Services.AddSwaggerGen(c =>
         Description = "欢迎来到我们的运动场地预约系统。在这里你可以浏览我们的数据库网络应用程序。"
     });
 
-    // ✅ 加入 JWT 支持
+    // JWT 支持
     c.AddSecurityDefinition("Bearer", new OpenApiSecurityScheme
     {
         Description = "JWT 授权，请输入: Bearer {token}",
@@ -83,7 +91,6 @@ builder.Services.AddSwaggerGen(c =>
         Type = SecuritySchemeType.ApiKey,
         Scheme = "Bearer"
     });
-
     c.AddSecurityRequirement(new OpenApiSecurityRequirement
     {
         {
@@ -98,6 +105,9 @@ builder.Services.AddSwaggerGen(c =>
             Array.Empty<string>()
         }
     });
+
+    // 这一句启用文件上传支持
+    c.OperationFilter<FileUploadOperationFilter>();
 });
 
 
@@ -117,6 +127,16 @@ app.UseSwaggerUI(c => // 启用swaggerUI
         c.DocumentTitle = "运动场地预约系统 - API";
     }
 );
+
+app.UseStaticFiles(); // 这行必须有
+
+app.UseStaticFiles(new StaticFileOptions
+{
+    FileProvider = new PhysicalFileProvider(
+        Path.Combine(env.WebRootPath, "uploads")),
+    RequestPath = "/uploads"
+});
+
 
 app.UseCors("AllowAll");
 app.UseHttpsRedirection(); // 启动HTTPS重定向中间件 

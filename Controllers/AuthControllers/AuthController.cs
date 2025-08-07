@@ -12,7 +12,7 @@ using System.Text;
 namespace Sports_reservation_backend.Controllers.AuthControllers
 {
     [ApiController]
-    [Route("api/[controller]")]
+    [Route("api/auth")]
     public class AuthController : ControllerBase
     {
         private readonly OracleDbContext _db;
