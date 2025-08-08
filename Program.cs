@@ -137,10 +137,9 @@ app.UseStaticFiles(new StaticFileOptions
     RequestPath = "/uploads"
 });
 
-
 app.UseCors("AllowAll");
 app.UseHttpsRedirection(); // 启动HTTPS重定向中间件 
 app.UseAuthentication();   //  JWT 认证中间件（一定在 Authorization 之前）
 app.UseAuthorization();    //  授权中间件
-app.MapControllers(); // 将控制器映射到路由
-app.Run(); // 启动应用程序并开始处理请求
+app.MapControllers();      // 将控制器映射到路由
+app.Run();                 // 启动应用程序并开始处理请求

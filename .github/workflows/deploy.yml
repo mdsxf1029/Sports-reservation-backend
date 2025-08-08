@@ -38,5 +38,5 @@ jobs:
             sudo docker stop sports-reservation-webapi
             sudo docker sports-reservation-webapi
             
-            sudo docker run -d --name sports-reservation-webapi -p 80:8080 ${{ secrets.DOCKER_USERNAME }}/sports-reservation-webapi:latest
+            sudo docker run -d --name sports-reservation-webapi --privileged -p 5101:8080 ${{ secrets.DOCKER_USERNAME }}/sports-reservation-webapi:latest
             
