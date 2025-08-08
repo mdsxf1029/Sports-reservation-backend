@@ -10,13 +10,15 @@ COPY ["Sports-reservation-backend.csproj", "./"]
 RUN dotnet restore "./Sports-reservation-backend.csproj"
 COPY . .
 RUN dotnet build "./Sports-reservation-backend.csproj" -c $BUILD_CONFIGURATION -o /app/build
+RUN echo "Executing the BUILD stage!
 
 FROM build AS publish
 ARG BUILD_CONFIGURATION=Release
 WORKDIR /src
 RUN dotnet publish "./Sports-reservation-backend.csproj" -c $BUILD_CONFIGURATION -o /app/publish /p:UseAppHost=false
+RUN echo "Executing the PUBLISH stage!
 
 FROM base AS final
 WORKDIR /app
-COPY ["--from=publish", "/app/publish", "./"]
+COPY --from=publish /app/publish .
 ENTRYPOINT ["dotnet", "Sports-reservation-backend.dll"]
