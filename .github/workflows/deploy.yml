@@ -32,11 +32,12 @@ jobs:
           host: ${{ secrets.SERVER_HOST }}
           username: ${{ secrets.SERVER_USER }}
           key: ${{ secrets.SSH_PRIVATE_KEY }}
-          script: |   
-            sudo docker pull ${{ secrets.DOCKER_USERNAME }}/sports-reservation-webapi:latest
-            
+          script: |
             sudo docker stop sports-reservation-webapi
             sudo docker rm sports-reservation-webapi
+            
+            sudo docker rmi ${{ secrets.DOCKER_USERNAME }}/sports-reservation-webapi:latest
+            sudo docker pull ${{ secrets.DOCKER_USERNAME }}/sports-reservation-webapi:latest
             
             sudo docker run -d --name sports-reservation-webapi --privileged -p 5101:8080 ${{ secrets.DOCKER_USERNAME }}/sports-reservation-webapi:latest
             
