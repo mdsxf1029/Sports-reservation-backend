@@ -19,6 +19,7 @@
 
   <ItemGroup>
     <Folder Include="Models\RequestModels\" />
+    <Folder Include="wwwroot\uploads\" />
   </ItemGroup>
 
   <ItemGroup>
