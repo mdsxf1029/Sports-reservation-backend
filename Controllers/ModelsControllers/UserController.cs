@@ -156,14 +156,14 @@ namespace Sports_reservation_backend.Controllers
                 }
 
                 // 更新字段，注意要用 null 合并操作符，避免前端没传字段导致覆盖为空
-                user.UserName = request.UserName ?? user.UserName;
-                user.Telephone = request.Telephone ?? user.Telephone;
-                user.Email = request.Email ?? user.Email;
-                user.Gender = request.Gender ?? user.Gender;
-                user.Birthday = request.Birthday ?? user.Birthday;
-                user.AvatarUrl = request.AvatarUrl ?? user.AvatarUrl;
-                user.Region = request.Region ?? user.Region;
-                user.Profile = request.Profile ?? user.Profile;
+                user.UserName = request.UserName;
+                user.Telephone = request.Telephone;
+                user.Email = request.Email;
+                user.Gender = request.Gender;
+                user.Birthday = request.Birthday;
+                user.AvatarUrl = request.AvatarUrl;
+                user.Region = request.Region;
+                user.Profile = request.Profile;
 
                 if (!string.IsNullOrEmpty(request.NewPassword))
                 {
