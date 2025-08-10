@@ -5,6 +5,8 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.IdentityModel.Tokens;
 using Sports_reservation_backend.Data;
+using Microsoft.Extensions.FileProviders;
+using Sports_reservation_backend.Utils;
 
 var config = new ConfigurationBuilder()
     .SetBasePath(Directory.GetCurrentDirectory())
@@ -12,7 +14,11 @@ var config = new ConfigurationBuilder()
     .Build();
 
 // 创建web应用构建器
-var builder = WebApplication.CreateBuilder(args);
+var builder = WebApplication.CreateBuilder(new WebApplicationOptions
+{
+    Args = args,
+    WebRootPath = "wwwroot"
+});
 
 builder.Services.AddCors(options =>
 {
@@ -21,6 +27,8 @@ builder.Services.AddCors(options =>
         policy.AllowAnyOrigin().AllowAnyMethod().AllowAnyHeader();
     });
 });
+
+var env = builder.Environment;
 
 // 数据库
 builder.Services.AddDbContext<OracleDbContext>(options =>
@@ -52,8 +60,8 @@ builder.Services.AddAuthentication(options =>
 {
     options.TokenValidationParameters = new TokenValidationParameters
     {
-        ValidateIssuer = true,
-        ValidateAudience = true,
+        ValidateIssuer = false,
+        ValidateAudience = false,
         ValidateLifetime = true,
         ValidateIssuerSigningKey = true,
         ValidIssuer = config["Jwt:Issuer"],
@@ -74,7 +82,7 @@ builder.Services.AddSwaggerGen(c =>
         Description = "欢迎来到我们的运动场地预约系统。在这里你可以浏览我们的数据库网络应用程序。"
     });
 
-    // ✅ 加入 JWT 支持
+    // JWT 支持
     c.AddSecurityDefinition("Bearer", new OpenApiSecurityScheme
     {
         Description = "JWT 授权，请输入: Bearer {token}",
@@ -83,7 +91,6 @@ builder.Services.AddSwaggerGen(c =>
         Type = SecuritySchemeType.ApiKey,
         Scheme = "Bearer"
     });
-
     c.AddSecurityRequirement(new OpenApiSecurityRequirement
     {
         {
@@ -98,6 +105,9 @@ builder.Services.AddSwaggerGen(c =>
             Array.Empty<string>()
         }
     });
+
+    // 这一句启用文件上传支持
+    c.OperationFilter<FileUploadOperationFilter>();
 });
 
 
@@ -118,9 +128,24 @@ app.UseSwaggerUI(c => // 启用swaggerUI
     }
 );
 
+app.UseStaticFiles(); // 这行必须有
+
+var wwwrootPath = Path.Combine(env.WebRootPath, "uploads");
+    
+if (!Directory.Exists(wwwrootPath))
+{
+    Directory.CreateDirectory(wwwrootPath);
+}
+
+app.UseStaticFiles(new StaticFileOptions
+{
+    FileProvider = new PhysicalFileProvider(wwwrootPath),
+    RequestPath = "/uploads"
+});
+
 app.UseCors("AllowAll");
 app.UseHttpsRedirection(); // 启动HTTPS重定向中间件 
 app.UseAuthentication();   //  JWT 认证中间件（一定在 Authorization 之前）
 app.UseAuthorization();    //  授权中间件
-app.MapControllers(); // 将控制器映射到路由
-app.Run(); // 启动应用程序并开始处理请求
+app.MapControllers();      // 将控制器映射到路由
+app.Run();                 // 启动应用程序并开始处理请求
