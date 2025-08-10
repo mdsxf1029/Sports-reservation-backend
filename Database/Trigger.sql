@@ -10,6 +10,17 @@ begin
 end;
 /
 
+--自动调整注册时间
+create or replace trigger set_register_time before
+   insert on "USER"
+   for each row
+begin
+   if :new.register_time is null then
+      :new.register_time := sysdate;
+   end if;
+end;
+/
+
 --创建 sequence 用于post_id自增
 create sequence post_id_seq start with 1 increment by 1;
 
