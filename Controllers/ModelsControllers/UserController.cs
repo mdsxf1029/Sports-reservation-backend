@@ -41,6 +41,7 @@ namespace Sports_reservation_backend.Controllers
 
                 return Ok(ApiResponse<object>.Success(new
                 {
+                    user.UserId,
                     user.UserName,
                     user.Telephone,
                     user.Email,
@@ -155,15 +156,30 @@ namespace Sports_reservation_backend.Controllers
                     }
                 }
 
-                // 更新字段，注意要用 null 合并操作符，避免前端没传字段导致覆盖为空
-                user.UserName = request.UserName;
-                user.Telephone = request.Telephone;
-                user.Email = request.Email;
-                user.Gender = request.Gender;
-                user.Birthday = request.Birthday;
-                user.AvatarUrl = request.AvatarUrl;
-                user.Region = request.Region;
-                user.Profile = request.Profile;
+                // 更新字段，只有在传入值时才更新，避免覆盖为空
+                if (!string.IsNullOrEmpty(request.UserName))
+                    user.UserName = request.UserName;
+                
+                if (!string.IsNullOrEmpty(request.Telephone))
+                    user.Telephone = request.Telephone;
+                
+                if (!string.IsNullOrEmpty(request.Email))
+                    user.Email = request.Email;
+                
+                if (!string.IsNullOrEmpty(request.Gender))
+                    user.Gender = request.Gender;
+                
+                if (request.Birthday.HasValue)
+                    user.Birthday = request.Birthday.Value;
+                
+                if (!string.IsNullOrEmpty(request.AvatarUrl))
+                    user.AvatarUrl = request.AvatarUrl;
+                
+                if (!string.IsNullOrEmpty(request.Region))
+                    user.Region = request.Region;
+                
+                if (!string.IsNullOrEmpty(request.Profile))
+                    user.Profile = request.Profile;
 
                 if (!string.IsNullOrEmpty(request.NewPassword))
                 {
