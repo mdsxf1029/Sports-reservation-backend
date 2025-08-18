@@ -94,8 +94,7 @@ public class UploadController : ControllerBase
             }
             if (principal == null)
             {
-                Console.WriteLine("Token 验证失败，principal 为 null");
-                return Unauthorized(new { code = 401, msg = "无效 token", data = (object)null });
+                Console.WriteLine("Token 验证失败，可能在注册时候进行头像的上传。");
             }
         }
 
