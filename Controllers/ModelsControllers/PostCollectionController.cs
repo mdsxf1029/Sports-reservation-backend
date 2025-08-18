@@ -1,0 +1,126 @@
+﻿using Microsoft.AspNetCore.Http.HttpResults;
+using Microsoft.AspNetCore.Mvc;
+using Microsoft.EntityFrameworkCore;
+using Sports_reservation_backend.Data;
+using Sports_reservation_backend.Models.TableModels;
+using Swashbuckle.AspNetCore.Annotations;
+
+namespace Sports_reservation_backend.Controllers.ModelsControllers;
+
+[Route("api/post-collection")]
+[ApiController]
+[SwaggerTag("帖子收藏相关api")]
+public class PostCollectionController(OracleDbContext context) : ControllerBase
+{
+    [HttpGet("post/{postId:int}/users")]
+    [SwaggerOperation(Summary = "根据帖子ID获取收藏其的用户", Description = "根据帖子ID获取收藏其的用户")]
+    public async Task<ActionResult<IEnumerable<int>>> GetUsersByPost(int postId)
+    {
+        try
+        {
+            var users = await context.PostCollectionSet
+                .Where(p => p.PostId == postId)
+                .Select(p => p.UserId)
+                .ToListAsync();
+
+            if (users.Count == 0)
+            {
+                return NotFound($"No corresponding data found for ID: {postId}");
+            }
+
+            return Ok(users);
+        }
+        catch (Exception ex)
+        {
+            return StatusCode(500, $"Internal server error: {ex.Message}");
+        }
+    }
+
+    [HttpGet("user/{userId:int}/posts")]
+    [SwaggerOperation(Summary = "根据用户ID获取其收藏的帖子", Description = "根据用户ID获取其收藏的帖子")]
+    public async Task<ActionResult<IEnumerable<int>>> GetPostsByUser(int userId)
+    {
+        try
+        {
+            var posts = await context.PostCollectionSet
+                .Where(pc => pc.UserId == userId)
+                .Select(pc => pc.PostId)
+                .ToListAsync();
+
+            if (posts.Count == 0)
+            {
+                return NotFound($"No corresponding data found for ID: {userId}");
+            }
+
+            return Ok(posts);
+        }
+        catch (Exception ex)
+        {
+            return StatusCode(500, $"Internal server error: {ex.Message}");
+        }
+    }
+    
+    [HttpPost("{userId:int}-{postId:int}")]
+    [SwaggerOperation(Summary = "收藏帖子", Description = "收藏帖子")]
+    public async Task<IActionResult> AddCollection(int userId, int postId)
+    {
+        var exists = await context.PostCollectionSet
+            .AnyAsync(pc => pc.UserId == userId && pc.PostId == postId);
+
+        if (exists)
+        {
+            return BadRequest("This post is already collected by the user.");
+        }
+        
+        var collection = new PostCollection
+        {
+            UserId = userId,
+            PostId = postId,
+            CollectedTime = DateTime.Now
+        };
+
+        context.PostCollectionSet.Add(collection);
+        
+        var post = await context.PostSet.FindAsync(postId);
+        if (post != null)
+        {
+            post.LikeCount++;
+        }
+        
+        await context.SaveChangesAsync();
+
+        return CreatedAtAction(nameof(AddCollection), new { userId, postId }, collection);
+    }
+    
+    [HttpDelete("{userId:int}-{postId:int}")]
+    [SwaggerOperation(Summary = "取消收藏", Description = "取消收藏")]
+    public async Task<IActionResult> RemoveCollection(int userId, int postId)
+    {
+        try
+        {
+            var collection = await context.PostCollectionSet
+                .FirstOrDefaultAsync(pc => pc.UserId == userId && pc.PostId == postId);
+
+            if (collection == null)
+            {
+                return NotFound("Collection not found.");
+            }
+
+            context.PostCollectionSet.Remove(collection);
+
+            var post = await context.PostSet.FindAsync(postId);
+            if (post != null && post.LikeCount > 0)
+            {
+                post.LikeCount--;
+            }
+            
+            await context.SaveChangesAsync();
+
+            return Ok("Collection removed successfully.");
+        }
+        catch(Exception ex)
+        {
+            return StatusCode(500, $"Internal server error: {ex.Message}");
+        }
+    }
+}

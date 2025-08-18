@@ -29,7 +29,7 @@ create table post (
    reading_count    number, -- 阅读量
    collection_count number, --收藏量
    like_count       number, --点赞量
-   dislike_count    number --点踩量
+   dislike_count    number  --点踩量
 );
 
 /*评论*/

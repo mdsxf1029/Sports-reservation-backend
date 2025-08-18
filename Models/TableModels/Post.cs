@@ -32,9 +32,9 @@ public class Post
     [SwaggerSchema("发布状态")]
     public string? PostStatus { get; set; }
 
-    [Column("READING_COUNT")]
+    [Column("COMMENT_COUNT")]
     [SwaggerSchema("阅读量")]
-    public int? ReadingCount { get; set; }
+    public int? CommentCount { get; set; }
 
     [Column("COLLECTION_COUNT")]
     [SwaggerSchema("收藏量")]

@@ -31,7 +31,7 @@ public class OracleDbContext(DbContextOptions<OracleDbContext> options) : DbCont
     public DbSet<User> UserSet { get; set; }
     public DbSet<UserAppointment> UserAppointmentSet { get; set; }
     public DbSet<UserComment> UserCommentSet { get; set; }
-    public DbSet<UserPost> UsersPostSet { get; set; }
+    public DbSet<UserPost> UserPostSet { get; set; }
     public DbSet<UserViolation> UserViolationSet { get; set; }
     public DbSet<Venue> VenueSet { get; set; }
     public DbSet<VenueAppointment> VenueAppointmentSet { get; set; }
