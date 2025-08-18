@@ -153,3 +153,15 @@ begin
    :new.bill_id := bill_id_seq.nextval;
 end;
 /
+
+-- 创建 SEQUENCE 用于 notification_id 自增
+create sequence notification_id_seq start with 1 increment by 1;
+
+-- 创建触发器，在插入时自动赋值 notification_id
+create or replace trigger trg_notification_id before
+   insert on notification
+   for each row
+begin
+   :new.notification_id := notification_id_seq.nextval;
+end;
+/

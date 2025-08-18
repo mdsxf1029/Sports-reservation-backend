@@ -29,7 +29,7 @@ create table post (
    reading_count    number, -- 阅读量
    collection_count number, --收藏量
    like_count       number, --点赞量
-   dislike_count    number --点踩量
+   dislike_count    number  --点踩量
 );
 
 /*评论*/
@@ -151,6 +151,16 @@ create table bill (
       references "USER" ( user_id ), --用户id
    appointment_id number
       references appointment ( appointment_id ) -- 预约id
+);
+
+/*通知*/
+create table notification (
+   notification_id number primary key, --通知id
+   user_id         number
+      references "USER" ( user_id ), -- 用户id
+   content         varchar(255), --通知内容
+   isread          number, --阅读状态
+   createtime      date --创建时间
 );
 
 ------------------------------------------------------------------------------------------------------------------------------------------------------

@@ -4,7 +4,7 @@ using Swashbuckle.AspNetCore.Annotations;
 
 namespace Sports_reservation_backend.Models.TableModels
 {
-    [Table("\"COMMENT\"")]
+    [Table("COMMENT")]
     [SwaggerSchema(Description = "评论表")]
     public class Comment
     {
