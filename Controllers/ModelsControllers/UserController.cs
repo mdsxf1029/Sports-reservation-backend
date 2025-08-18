@@ -21,9 +21,7 @@ namespace Sports_reservation_backend.Controllers
             _logger = logger;
         }
 
-        /// <summary>
         /// 根据 userId 获取用户信息
-        /// </summary>
         [Authorize]
         [HttpGet("{userId}")]
         public async Task<IActionResult> GetUserById(int userId)
@@ -62,9 +60,7 @@ namespace Sports_reservation_backend.Controllers
             }
         }
 
-        /// <summary>
         /// 获取当前登录用户信息（从 JWT 获取 userId）
-        /// </summary>
         [Authorize]
         [HttpGet("token_to_userId")]
         public async Task<IActionResult> GetCurrentUser()
@@ -191,6 +187,166 @@ namespace Sports_reservation_backend.Controllers
                     code = 1001,
                     msg = "失败",
                     data = (object)null
+                });
+            }
+        }
+
+        /// 根据 userId 获取用户积分
+        [Authorize]
+        [HttpGet("{userId}/points")]
+        public async Task<IActionResult> GetUserPoints(int userId)
+        {
+            try
+            {
+                var user = await _db.UserSet
+                    .AsNoTracking()
+                    .FirstOrDefaultAsync(u => u.UserId == userId);
+
+                if (user == null)
+                {
+                    return Ok(new
+                    {
+                        code = 1001,
+                        msg = "失败",
+                        data = (object?)null
+                    });
+                }
+
+                return Ok(new
+                {
+                    code = 0,
+                    msg = "成功",
+                    data = new
+                    {
+                        points = user.Points
+                    }
+                });
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "查询用户积分失败");
+                return Ok(new
+                {
+                    code = 1001,
+                    msg = "失败",
+                    data = (object?)null
+                });
+            }
+        }
+        /// 根据 userId 获取积分变动历史（分页）
+        [Authorize]
+        [HttpGet("{userId}/points/history")]
+        public async Task<IActionResult> GetUserPointsHistory(int userId, [FromQuery] int page = 1, [FromQuery] int pageSize = 10)
+        {
+            try
+            {
+                if (userId <= 0)
+                {
+                    return Ok(new
+                    {
+                        code = 0,
+                        msg = "加载失败",
+                        data = (object?)null
+                    });
+                }
+
+                var query = _db.PointChangeSet
+                    .Where(pc => pc.UserId == userId)
+                    .OrderByDescending(pc => pc.ChangeTime);
+
+                var total = await query.CountAsync();
+
+                var list = await query
+                    .Skip((page - 1) * pageSize)
+                    .Take(pageSize)
+                    .Select(pc => new
+                    {
+                        changeAmount = pc.ChangeAmount,
+                        changeReason = pc.ChangeReason,
+                        changeTime = pc.ChangeTime
+                    })
+                    .ToListAsync();
+
+                return Ok(new
+                {
+                    code = 0,
+                    msg = "成功",
+                    data = new
+                    {
+                        list,
+                        total,
+                        page,
+                        pageSize
+                    }
+                });
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "查询积分变化历史失败");
+                return Ok(new
+                {
+                    code = 0,
+                    msg = "加载失败",
+                    data = (object?)null
+                });
+            }
+        }
+
+        /// 根据 userId 获取用户通知列表（分页）
+        [Authorize]
+        [HttpGet("{userId}/notifications")]
+        public async Task<IActionResult> GetUserNotifications(int userId, [FromQuery] int page = 1, [FromQuery] int pageSize = 10)
+        {
+            try
+            {
+                if (userId <= 0)
+                {
+                    return Ok(new
+                    {
+                        code = 33,
+                        msg = "userId无效",
+                        data = (object?)null
+                    });
+                }
+
+                var query = _db.NotificationSet
+                    .Where(n => n.UserId == userId)
+                    .OrderByDescending(n => n.CreateTime);
+
+                var total = await query.CountAsync();
+
+                var list = await query
+                    .Skip((page - 1) * pageSize)
+                    .Take(pageSize)
+                    .Select(n => new
+                    {
+                        content = n.Content,
+                        isRead = n.IsRead == 1, // 转为 bool
+                        createTime = n.CreateTime
+                    })
+                    .ToListAsync();
+
+                return Ok(new
+                {
+                    code = 0,
+                    msg = "成功",
+                    data = new
+                    {
+                        list,
+                        total,
+                        page,
+                        pageSize
+                    }
+                });
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "获取通知列表失败");
+                return Ok(new
+                {
+                    code = 33,
+                    msg = "获取通知列表失败",
+                    data = (object?)null
                 });
             }
         }

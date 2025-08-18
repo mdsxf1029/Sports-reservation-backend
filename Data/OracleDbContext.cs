@@ -19,6 +19,7 @@ public class OracleDbContext(DbContextOptions<OracleDbContext> options) : DbCont
     public DbSet<Maintenance> MaintenanceSet { get; set; }
     public DbSet<ManagerCommentReport> ManagerCommentReportSet { get; set; }
     public DbSet<ManagerPostReport> ManagerPostReportSet { get; set; }
+    public DbSet<Notification> NotificationSet { get; set; }
     public DbSet<PointChange> PointChangeSet { get; set; }
     public DbSet<Post> PostSet { get; set; }
     public DbSet<PostCollection> PostCollectionSet { get; set; }
@@ -37,12 +38,12 @@ public class OracleDbContext(DbContextOptions<OracleDbContext> options) : DbCont
     public DbSet<VenueManager> VenueManagerSet { get; set; }
     public DbSet<VenueTimeSlot> VenueTimeSlotSet { get; set; }
     public DbSet<Violation> ViolationSet { get; set; }
-    
+
     // 重写 OnModelCreating 方法
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         base.OnModelCreating(modelBuilder);
-        
-        
+
+
     }
 }
