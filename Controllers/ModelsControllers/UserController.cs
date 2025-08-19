@@ -331,6 +331,11 @@ namespace Sports_reservation_backend.Controllers
 
                 var total = await query.CountAsync();
 
+
+                var unreadNum = await _db.NotificationSet
+                    .Where(n => n.UserId == userId && n.IsRead == 0)
+                    .CountAsync();
+
                 var list = await query
                     .Skip((page - 1) * pageSize)
                     .Take(pageSize)
@@ -351,6 +356,7 @@ namespace Sports_reservation_backend.Controllers
                     {
                         list,
                         total,
+                        unreadNum,
                         page,
                         pageSize
                     }
