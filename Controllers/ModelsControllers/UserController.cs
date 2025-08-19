@@ -374,5 +374,70 @@ namespace Sports_reservation_backend.Controllers
             }
         }
 
+        /// <summary>
+        /// 标记通知为已读
+        /// </summary>
+        [Authorize]
+        [HttpPut("{userId}/notifications/{notificationId}/read")]
+        public async Task<IActionResult> MarkNotificationAsRead(int userId, int notificationId)
+        {
+            try
+            {
+                // 验证参数
+                if (userId <= 0 || notificationId <= 0)
+                {
+                    return Ok(new
+                    {
+                        code = 1001,
+                        msg = "参数无效"
+                    });
+                }
+
+                // 查找通知
+                var notification = await _db.NotificationSet
+                    .FirstOrDefaultAsync(n => n.NotificationId == notificationId && n.UserId == userId);
+
+                if (notification == null)
+                {
+                    return Ok(new
+                    {
+                        code = 1001,
+                        msg = "通知不存在或无权限访问"
+                    });
+                }
+
+                // 如果已经是已读状态，直接返回成功
+                if (notification.IsRead == 1)
+                {
+                    return Ok(new
+                    {
+                        code = 0,
+                        msg = "通知已经是已读状态"
+                    });
+                }
+
+                // 标记为已读
+                notification.IsRead = 1;
+
+                await _db.SaveChangesAsync();
+
+                return Ok(new
+                {
+                    code = 0,
+                    msg = "标记成功"
+                });
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "标记通知为已读失败，userId: {UserId}, notificationId: {NotificationId}", userId, notificationId);
+                return Ok(new
+                {
+                    code = 1001,
+                    msg = "标记失败"
+                });
+            }
+        }
+
+
     }
 }
