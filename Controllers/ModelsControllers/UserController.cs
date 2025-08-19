@@ -286,7 +286,7 @@ namespace Sports_reservation_backend.Controllers
                 return Ok(new
                 {
                     code = 0,
-                    msg = "成功",
+                    msg = "积分变动历史 获取成功",
                     data = new
                     {
                         list,
@@ -336,10 +336,11 @@ namespace Sports_reservation_backend.Controllers
                     .Take(pageSize)
                     .Select(n => new
                     {
+                        notificationId = n.NotificationId,
                         content = n.Content,
                         isRead = n.IsRead == 1, // 转为 bool
                         createTime = n.CreateTime
-                    })
+                })
                     .ToListAsync();
 
                 return Ok(new

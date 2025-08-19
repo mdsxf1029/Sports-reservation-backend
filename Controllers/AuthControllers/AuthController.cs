@@ -77,7 +77,7 @@ namespace Sports_reservation_backend.Controllers.AuthControllers
                     return Ok(ApiResponse<object>.Fail(1003, "邮箱未注册"));
 
                 if (user.Password != request.Password)
-                    return Ok(ApiResponse<object>.Fail(10002, "账号密码错误"));
+                    return Ok(ApiResponse<object>.Fail(1002, "账号密码错误"));
 
                 var jwtKey = _config["Jwt:SecretKey"]!;
                 var jwtIssuer = _config["Jwt:Issuer"]!;
