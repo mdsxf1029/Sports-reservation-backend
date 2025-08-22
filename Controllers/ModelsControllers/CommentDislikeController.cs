@@ -13,17 +13,17 @@ public class CommentDislikeController(OracleDbContext context) : ControllerBase
 {
     [HttpGet("comment/{commentId:int}")]
     [SwaggerOperation(Summary = "根据评论ID获取点踩其的用户", Description = "根据评论ID获取点踩其的用户")]
-    public async Task<IActionResult> GetUsersByComment(int commentId)
+    public async Task<ActionResult<object>> GetUsersByComment(int commentId)
     {
         try
         {
             var users = await context.CommentDislikeSet
                 .Where(cd => cd.CommentId == commentId)
                 .Include(cd => cd.User)
-                .Select(cd => cd.UserId)
+                .Select(cd => cd.User)
                 .ToListAsync();
 
-            return Ok(users);
+            return Ok(new{dislikeCount = users.Count, data = users});
         }
         catch (Exception ex)
         {
@@ -33,17 +33,17 @@ public class CommentDislikeController(OracleDbContext context) : ControllerBase
     
     [HttpGet("user/{userId:int}")]
     [SwaggerOperation(Summary = "根据用户ID获取其点踩的评论", Description = "根据用户ID获取其点踩的评论")]
-    public async Task<IActionResult> GetCommentsByUser(int userId)
+    public async Task<ActionResult<object>> GetCommentsByUser(int userId)
     {
         try
         {
             var comments = await context.CommentDislikeSet
                 .Where(cd => cd.UserId == userId)
                 .Include(cd => cd.Comment)
-                .Select(cd => cd.CommentId)
+                .Select(cd => cd.Comment)
                 .ToListAsync();
 
-            return Ok(comments);
+            return Ok(new{dislikingCount = comments.Count, data = comments});
         }
         catch (Exception ex)
         {

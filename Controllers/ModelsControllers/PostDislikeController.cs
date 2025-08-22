@@ -21,10 +21,10 @@ public class PostDislikeController(OracleDbContext context) : ControllerBase
             var users = await context.PostDislikeSet
                 .Where(pd => pd.PostId == postId)
                 .Include(pd => pd.User)
-                .Select(pd => pd.UserId)
+                .Select(pd => pd.User)
                 .ToListAsync();
 
-            return Ok(users);
+            return Ok(new{ dislikeCount = users.Count, data = users });
         }
         catch (Exception ex)
         {
@@ -41,10 +41,10 @@ public class PostDislikeController(OracleDbContext context) : ControllerBase
             var posts = await context.PostDislikeSet
                 .Where(pd => pd.UserId == userId)
                 .Include(pd => pd.Post)
-                .Select(pd => pd.PostId)
+                .Select(pd => pd.Post)
                 .ToListAsync();
 
-            return Ok(posts);
+            return Ok(new {dislikingCount = posts.Count, data = posts });
         }
         catch (Exception ex)
         {
@@ -54,7 +54,7 @@ public class PostDislikeController(OracleDbContext context) : ControllerBase
     
     [HttpPost("{postId:int}-{userId:int}")]
     [SwaggerOperation(Summary = "点踩帖子", Description = "点踩帖子")]
-    public async Task<IActionResult> DislikePost(int postId, int userId)
+    public async Task<ActionResult<object>> DislikePost(int postId, int userId)
     {
         var exists = await context.PostDislikeSet
             .AnyAsync(pd => pd.PostId == postId && pd.UserId == userId);
@@ -85,7 +85,7 @@ public class PostDislikeController(OracleDbContext context) : ControllerBase
     
     [HttpDelete("{postId:int}-{userId:int}")]
     [SwaggerOperation(Summary = "取消点踩", Description = "取消点踩")]
-    public async Task<IActionResult> UndislikePost(int postId, int userId)
+    public async Task<ActionResult<object>> UndislikePost(int postId, int userId)
     {
         var dislike = await context.PostDislikeSet
             .FirstOrDefaultAsync(pd => pd.PostId == postId && pd.UserId == userId);

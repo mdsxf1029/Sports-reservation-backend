@@ -13,17 +13,17 @@ public class CommentLikeController(OracleDbContext context) : ControllerBase
 {
     [HttpGet("comment/{commentId:int}")]
     [SwaggerOperation(Summary = "根据评论ID获取点赞其的用户", Description = "根据评论ID获取点赞其的用户")]
-    public async Task<IActionResult> GetUsersByComment(int commentId)
+    public async Task<ActionResult<object>> GetUsersByComment(int commentId)
     {
         try
         {
             var users = await context.CommentLikeSet
                 .Where(cl => cl.CommentId == commentId)
                 .Include(cl => cl.User)
-                .Select(cl => cl.UserId)
+                .Select(cl => cl.User)
                 .ToListAsync();
 
-            return Ok(users);
+            return Ok(new { likeCount = users.Count, data = users });
         }
         catch (Exception ex)
         {
@@ -33,17 +33,17 @@ public class CommentLikeController(OracleDbContext context) : ControllerBase
     
     [HttpGet("user/{userId:int}")]
     [SwaggerOperation(Summary = "根据用户ID获取其点赞的评论", Description = "根据用户ID获取其点赞的评论")]
-    public async Task<IActionResult> GetCommentsByUser(int userId)
+    public async Task<ActionResult<object>> GetCommentsByUser(int userId)
     {
         try
         {
             var comments = await context.CommentLikeSet
                 .Where(cl => cl.UserId == userId)
                 .Include(cl => cl.Comment)
-                .Select(cl => cl.CommentId)
+                .Select(cl => cl.Comment)
                 .ToListAsync();
 
-            return Ok(comments);
+            return Ok(new { likeCount = comments.Count, data = comments });
         }
         catch (Exception ex)
         {

@@ -16,11 +16,28 @@ public class PostController(OracleDbContext context) : ControllerBase
     [SwaggerOperation(Summary = "获取所有的帖子", Description = "获取所有的帖子")]
     [SwaggerResponse(200,"获取数据成功")]
     [SwaggerResponse(500,"数据库内部出错")]
-    public async Task<ActionResult<IEnumerable<Post>>> GetPost()
+    public async Task<ActionResult<object>> GetPost([FromQuery] int page = 1, [FromQuery] int pageSize = 10)
     {
+        page = page < 1 ? 1 : page;
+        
+        pageSize = pageSize < 1 ? 10 : pageSize;
+        
         try
         {
-            return Ok(await context.PostSet.ToListAsync());
+            var totalCount = await context.PostSet.CountAsync();
+            
+            var posts = await context.PostSet
+                .OrderByDescending(p => p.PostId)
+                .Skip((page - 1) * pageSize)
+                .Take(pageSize)
+                .ToListAsync();
+            
+            return Ok(new
+            {
+                page, pageSize, totalCount,
+                totalPages = (int)Math.Ceiling(totalCount / (double)pageSize),
+                data = posts
+            });
         }
         catch (DbUpdateException dbEx)
         {
@@ -36,13 +53,29 @@ public class PostController(OracleDbContext context) : ControllerBase
     [SwaggerOperation(Summary = "获取所有公开的帖子", Description = "获取所有公开的帖子")]
     [SwaggerResponse(200,"获取数据成功")]
     [SwaggerResponse(500,"数据库内部出错")]
-    public async Task<ActionResult<IEnumerable<Post>>> GetPublicPost()
+    public async Task<ActionResult<object>> GetPublicPost([FromQuery] int page = 1, [FromQuery] int pageSize = 10)
     {
+        page = page < 1 ? 1 : page;
+        
+        pageSize = pageSize < 1 ? 10 : pageSize;
+        
         try
         {
-            var publicposts = await context.PostSet
-                .Where(post => post.PostStatus == "public").ToListAsync();
-            return Ok(publicposts);
+            var totalCount = await context.PostSet.Where(post => post.PostStatus == "public").CountAsync();
+            
+            var publicPosts = await context.PostSet
+                .Where(post => post.PostStatus == "public")
+                .OrderByDescending(p => p.PostId)
+                .Skip((page - 1) * pageSize)
+                .Take(pageSize)
+                .ToListAsync();
+            
+            return Ok(new
+            {
+                page, pageSize, totalCount,
+                totalPages = (int)Math.Ceiling(totalCount / (double)pageSize),
+                data = publicPosts
+            });
         }
         catch (DbUpdateException dbEx)
         {
@@ -81,20 +114,38 @@ public class PostController(OracleDbContext context) : ControllerBase
     [SwaggerResponse(200, "获取数据成功")]
     [SwaggerResponse(404, "未找到对应数据")]
     [SwaggerResponse(500, "服务器内部错误")]
-    public async Task<ActionResult<IEnumerable<Post>>> GetPostByUser(int userId)
+    public async Task<ActionResult<object>> GetPostByUser(int userId, [FromQuery] int page = 1, [FromQuery] int pageSize = 10)
     {
-        var postIds = await context.UserPostSet.Where(pu => pu.UserId == userId)
-            .Select(pu => pu.PostId)
-            .ToListAsync();
-        if (postIds.Count == 0)
-        {
-            return NotFound($"No corresponding data found for ID: {userId}");
-        }
+        page = page < 1 ? 1 : page;
+        
+        pageSize = pageSize < 1 ? 10 : pageSize;
+        
         try
         {
-            var posts = await context.PostSet.Where(p => postIds.Contains(p.PostId))
+            var postIds = await context.UserPostSet.Where(pu => pu.UserId == userId)
+                .Select(pu => pu.PostId)
                 .ToListAsync();
-            return Ok(posts);
+
+            if (postIds.Count == 0)
+            {
+                return NotFound($"No corresponding data found for user ID: {userId}");
+            }
+
+            var totalCount = postIds.Count;
+
+            var posts = await context.PostSet
+                .Where(p => postIds.Contains(p.PostId))
+                .OrderByDescending(p => p.PostId) 
+                .Skip((page - 1) * pageSize)
+                .Take(pageSize)
+                .ToListAsync();
+
+            return Ok(new
+            {
+                page, pageSize, totalCount,
+                totalPages = (int)Math.Ceiling(totalCount / (double)pageSize),
+                data = posts
+            });
         }
         catch (Exception ex)
         {
@@ -112,21 +163,35 @@ public class PostController(OracleDbContext context) : ControllerBase
         if (!ModelState.IsValid)
         {
             return BadRequest(ModelState);
-        } 
-        context.PostSet.Add(post);
-        
-        await context.SaveChangesAsync();
-        
-        var userPost = new UserPost
-        {
-            UserId = userId,
-            PostId = post.PostId
-        };
-        context.UserPostSet.Add(userPost);
-        
-        await context.SaveChangesAsync();
+        }
 
-        return CreatedAtAction(nameof(PostPost), new { id = post.PostId }, post);
+        try
+        {
+            post.LikeCount = 0;
+            post.DislikeCount = 0;
+            post.CommentCount = 0;
+            post.CollectionCount = 0;
+            post.PostTime = DateTime.Now;
+
+            context.PostSet.Add(post);
+
+            await context.SaveChangesAsync();
+
+            var userPost = new UserPost
+            {
+                UserId = userId,
+                PostId = post.PostId
+            };
+            context.UserPostSet.Add(userPost);
+
+            await context.SaveChangesAsync();
+
+            return CreatedAtAction(nameof(PostPost), new { id = post.PostId }, post);
+        }
+        catch (Exception ex)
+        {
+            return StatusCode(500, $"Internal server error: {ex.Message}");
+        }
     }
     
     [HttpDelete("{id:int}")]
@@ -175,9 +240,19 @@ public class PostController(OracleDbContext context) : ControllerBase
         {
             return BadRequest("ID mismatch");
         }
-        context.Entry(post).State = EntityState.Modified;
+        
+        var existingPost = await context.PostSet.FindAsync(id);
+        if (existingPost == null)
+        {
+            return NotFound($"No corresponding data found for ID: {id}");
+        }
+        
+        existingPost.PostTitle = post.PostTitle;
+        existingPost.PostContent = post.PostContent;
+        
         try
         {
+            context.Entry(post).State = EntityState.Modified;
             await context.SaveChangesAsync();
         }
         catch (DbUpdateConcurrencyException)

@@ -14,17 +14,17 @@ public class PostLikeController(OracleDbContext context) : ControllerBase
 {
     [HttpGet("post/{postId:int}")]
     [SwaggerOperation(Summary = "根据帖子ID获取点赞其的用户", Description = "根据帖子ID获取点赞其的用户")]
-    public async Task<IActionResult> GetUsersByPost(int postId)
+    public async Task<ActionResult<object>> GetUsersByPost(int postId)
     {
         try
         {
             var users = await context.PostLikeSet
                 .Where(pl => pl.PostId == postId)
                 .Include(pl => pl.User)
-                .Select(pl => pl.UserId)
+                .Select(pl => pl.User)
                 .ToListAsync();
 
-            return Ok(users);
+            return Ok(new { likeCount = users.Count, data = users });
         }
         catch (Exception ex)
         {
@@ -34,17 +34,17 @@ public class PostLikeController(OracleDbContext context) : ControllerBase
     
     [HttpGet("user/{userId:int}")]
     [SwaggerOperation(Summary = "根据用户ID获取其点赞的帖子", Description = "根据用户ID获取其点赞的帖子")]
-    public async Task<IActionResult> GetPostsByUser(int userId)
+    public async Task<ActionResult<object>> GetPostsByUser(int userId)
     {
         try
         {
             var posts = await context.PostLikeSet
                 .Where(pl => pl.UserId == userId)
                 .Include(pl => pl.Post)
-                .Select(pl => pl.PostId)
+                .Select(pl => pl.Post)
                 .ToListAsync();
 
-            return Ok(posts);
+            return Ok(new { likingCount = posts.Count, data = posts });
         }
         catch (Exception ex)
         {

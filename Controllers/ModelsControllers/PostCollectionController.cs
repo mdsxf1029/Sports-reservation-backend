@@ -14,13 +14,14 @@ public class PostCollectionController(OracleDbContext context) : ControllerBase
 {
     [HttpGet("post/{postId:int}/users")]
     [SwaggerOperation(Summary = "根据帖子ID获取收藏其的用户", Description = "根据帖子ID获取收藏其的用户")]
-    public async Task<ActionResult<IEnumerable<int>>> GetUsersByPost(int postId)
+    public async Task<ActionResult<object>> GetUsersByPost(int postId)
     {
         try
         {
             var users = await context.PostCollectionSet
                 .Where(p => p.PostId == postId)
-                .Select(p => p.UserId)
+                .Include(pl => pl.User)
+                .Select(pl => pl.User)
                 .ToListAsync();
 
             if (users.Count == 0)
@@ -28,7 +29,7 @@ public class PostCollectionController(OracleDbContext context) : ControllerBase
                 return NotFound($"No corresponding data found for ID: {postId}");
             }
 
-            return Ok(users);
+            return Ok(new { collectionCount = users.Count , data = users });
         }
         catch (Exception ex)
         {
@@ -38,13 +39,14 @@ public class PostCollectionController(OracleDbContext context) : ControllerBase
 
     [HttpGet("user/{userId:int}/posts")]
     [SwaggerOperation(Summary = "根据用户ID获取其收藏的帖子", Description = "根据用户ID获取其收藏的帖子")]
-    public async Task<ActionResult<IEnumerable<int>>> GetPostsByUser(int userId)
+    public async Task<ActionResult<object>> GetPostsByUser(int userId)
     {
         try
         {
             var posts = await context.PostCollectionSet
                 .Where(pc => pc.UserId == userId)
-                .Select(pc => pc.PostId)
+                .Include(pl => pl.Post)
+                .Select(pl => pl.Post)
                 .ToListAsync();
 
             if (posts.Count == 0)
@@ -52,7 +54,7 @@ public class PostCollectionController(OracleDbContext context) : ControllerBase
                 return NotFound($"No corresponding data found for ID: {userId}");
             }
 
-            return Ok(posts);
+            return Ok(new { collectingCount = posts.Count , data = posts});
         }
         catch (Exception ex)
         {
