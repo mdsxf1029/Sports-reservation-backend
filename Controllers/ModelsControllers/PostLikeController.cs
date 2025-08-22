@@ -24,7 +24,7 @@ public class PostLikeController(OracleDbContext context) : ControllerBase
                 .Select(pl => pl.User)
                 .ToListAsync();
 
-            return Ok(new { likeCount = users.Count, data = users });
+            return Ok(new { count = users.Count, data = users });
         }
         catch (Exception ex)
         {
@@ -44,7 +44,7 @@ public class PostLikeController(OracleDbContext context) : ControllerBase
                 .Select(pl => pl.Post)
                 .ToListAsync();
 
-            return Ok(new { likingCount = posts.Count, data = posts });
+            return Ok(new { count = posts.Count, data = posts });
         }
         catch (Exception ex)
         {

@@ -23,7 +23,7 @@ public class CommentLikeController(OracleDbContext context) : ControllerBase
                 .Select(cl => cl.User)
                 .ToListAsync();
 
-            return Ok(new { likeCount = users.Count, data = users });
+            return Ok(new { count = users.Count, data = users });
         }
         catch (Exception ex)
         {
@@ -43,7 +43,7 @@ public class CommentLikeController(OracleDbContext context) : ControllerBase
                 .Select(cl => cl.Comment)
                 .ToListAsync();
 
-            return Ok(new { likeCount = comments.Count, data = comments });
+            return Ok(new { count = comments.Count, data = comments });
         }
         catch (Exception ex)
         {

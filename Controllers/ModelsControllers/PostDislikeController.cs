@@ -24,7 +24,7 @@ public class PostDislikeController(OracleDbContext context) : ControllerBase
                 .Select(pd => pd.User)
                 .ToListAsync();
 
-            return Ok(new{ dislikeCount = users.Count, data = users });
+            return Ok(new{ count = users.Count, data = users });
         }
         catch (Exception ex)
         {
@@ -44,7 +44,7 @@ public class PostDislikeController(OracleDbContext context) : ControllerBase
                 .Select(pd => pd.Post)
                 .ToListAsync();
 
-            return Ok(new {dislikingCount = posts.Count, data = posts });
+            return Ok(new {count = posts.Count, data = posts });
         }
         catch (Exception ex)
         {

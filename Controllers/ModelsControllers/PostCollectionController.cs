@@ -29,7 +29,7 @@ public class PostCollectionController(OracleDbContext context) : ControllerBase
                 return NotFound($"No corresponding data found for ID: {postId}");
             }
 
-            return Ok(new { collectionCount = users.Count , data = users });
+            return Ok(new { count = users.Count , data = users });
         }
         catch (Exception ex)
         {
@@ -54,7 +54,7 @@ public class PostCollectionController(OracleDbContext context) : ControllerBase
                 return NotFound($"No corresponding data found for ID: {userId}");
             }
 
-            return Ok(new { collectingCount = posts.Count , data = posts});
+            return Ok(new { count = posts.Count , data = posts});
         }
         catch (Exception ex)
         {

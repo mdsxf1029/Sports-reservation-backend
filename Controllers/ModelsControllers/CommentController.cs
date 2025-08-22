@@ -7,7 +7,7 @@ using Sports_reservation_backend.Models.TableModels;
 
 namespace Sports_reservation_backend.Controllers.ModelsControllers;
 
-[Route("api/post-comment")]
+[Route("api/comment")]
 [ApiController]
 [SwaggerTag("帖子评论相关api")]
 public class CommentController(OracleDbContext context) : ControllerBase

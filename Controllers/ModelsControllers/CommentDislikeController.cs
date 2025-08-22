@@ -23,7 +23,7 @@ public class CommentDislikeController(OracleDbContext context) : ControllerBase
                 .Select(cd => cd.User)
                 .ToListAsync();
 
-            return Ok(new{dislikeCount = users.Count, data = users});
+            return Ok(new{count = users.Count, data = users});
         }
         catch (Exception ex)
         {
@@ -43,7 +43,7 @@ public class CommentDislikeController(OracleDbContext context) : ControllerBase
                 .Select(cd => cd.Comment)
                 .ToListAsync();
 
-            return Ok(new{dislikingCount = comments.Count, data = comments});
+            return Ok(new{count = comments.Count, data = comments});
         }
         catch (Exception ex)
         {
