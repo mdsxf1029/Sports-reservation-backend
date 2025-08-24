@@ -3,6 +3,7 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Swashbuckle.AspNetCore.Annotations;
 using Sports_reservation_backend.Data;
+using Sports_reservation_backend.Models.ResponseModels;
 using Sports_reservation_backend.Models.TableModels;
 
 namespace Sports_reservation_backend.Controllers.ModelsControllers;
@@ -50,7 +51,7 @@ public class CommentController(OracleDbContext context) : ControllerBase
     [SwaggerResponse(200, "获取数据成功")]
     [SwaggerResponse(404, "未找到对应数据")]
     [SwaggerResponse(500, "服务器内部错误")]
-    public async Task<ActionResult<Comment>> GetCommentByPk(int commentId)
+    public async Task<ActionResult<object>> GetCommentByPk(int commentId)
     {
         try
         {
@@ -59,7 +60,34 @@ public class CommentController(OracleDbContext context) : ControllerBase
             {
                 return NotFound($"No corresponding data found for ID: {commentId}");
             }
-            return Ok(comment);
+
+            var userComment = await context.UserCommentSet.FindAsync(commentId);
+            if (userComment == null)
+            {
+                return NotFound($"No corresponding data found for ID: {commentId}");
+            }
+            var user = await context.UserSet
+                .Where(u => u.UserId == userComment.UserId)
+                .Select(u => new UserResponse
+                {
+                    UserId = u.UserId,
+                    UserName = u.UserName,
+                    Points = u.Points,
+                    AvatarUrl = u.AvatarUrl,
+                    Gender = u.Gender,
+                    Profile = u.Profile,
+                    Region = u.Region,
+                })
+                .FirstOrDefaultAsync();
+            
+            var postComment = await context.PostCommentSet.FindAsync(commentId);
+            if (postComment == null)
+            {
+                return NotFound($"No corresponding data found for ID: {commentId}");
+            }
+            var post = await context.PostSet.FindAsync(postComment.PostId);
+            
+            return Ok(new {comment, user, post});
         }
         catch (Exception ex)
         {
@@ -312,7 +340,7 @@ public class CommentController(OracleDbContext context) : ControllerBase
     [SwaggerResponse(200, "删除数据成功")]
     [SwaggerResponse(404, "未找到对应数据")]
     [SwaggerResponse(500, "服务器内部错误")]
-    public async Task<ActionResult<Comment>> DeleteCommentByPk(int id)
+    public async Task<IActionResult> DeleteCommentByPk(int id)
     {
         try
         {

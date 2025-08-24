@@ -2,6 +2,7 @@
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Sports_reservation_backend.Data;
+using Sports_reservation_backend.Models.ResponseModels;
 using Sports_reservation_backend.Models.TableModels;
 using Swashbuckle.AspNetCore.Annotations;
 
@@ -92,7 +93,7 @@ public class PostController(OracleDbContext context) : ControllerBase
     [SwaggerResponse(200, "获取数据成功")]
     [SwaggerResponse(404, "未找到对应数据")]
     [SwaggerResponse(500, "服务器内部错误")]
-    public async Task<ActionResult<Post>> GetPostByPk(int id)
+    public async Task<ActionResult<object>> GetPostByPk(int id)
     {
         try
         {
@@ -101,7 +102,27 @@ public class PostController(OracleDbContext context) : ControllerBase
             {
                 return NotFound($"No corresponding data found for ID: {id}");
             }
-            return Ok(post);
+
+            var userPost = await context.UserPostSet.FindAsync(id);
+            if (userPost == null)
+            {
+                return NotFound($"No corresponding data found for ID: {id}");
+            }
+            var user = await context.UserSet
+                .Where(u => u.UserId == userPost.UserId)
+                .Select(u => new UserResponse
+                {
+                    UserId = u.UserId,
+                    UserName = u.UserName,
+                    Points = u.Points,
+                    AvatarUrl = u.AvatarUrl,
+                    Gender = u.Gender,
+                    Profile = u.Profile,
+                    Region = u.Region,
+                })
+                .FirstOrDefaultAsync();
+            
+            return Ok(new {post, user});
         }
         catch (Exception ex)
         {
@@ -183,7 +204,6 @@ public class PostController(OracleDbContext context) : ControllerBase
                 PostId = post.PostId
             };
             context.UserPostSet.Add(userPost);
-
             await context.SaveChangesAsync();
 
             return CreatedAtAction(nameof(PostPost), new { id = post.PostId }, post);
@@ -199,7 +219,7 @@ public class PostController(OracleDbContext context) : ControllerBase
     [SwaggerResponse(200, "删除数据成功")]
     [SwaggerResponse(404, "未找到对应数据")]
     [SwaggerResponse(500, "服务器内部错误")]
-    public async Task<ActionResult<Post>> DeletePostByPk(int id)
+    public async Task<IActionResult> DeletePostByPk(int id)
     {
         try
         {

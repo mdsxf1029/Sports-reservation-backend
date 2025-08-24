@@ -2,6 +2,7 @@
 using Microsoft.EntityFrameworkCore;
 using Swashbuckle.AspNetCore.Annotations;
 using Sports_reservation_backend.Data;
+using Sports_reservation_backend.Models.ResponseModels;
 using Sports_reservation_backend.Models.TableModels;
 
 namespace Sports_reservation_backend.Controllers.ModelsControllers;
@@ -17,13 +18,31 @@ public class CommentDislikeController(OracleDbContext context) : ControllerBase
     {
         try
         {
-            var users = await context.CommentDislikeSet
-                .Where(cd => cd.CommentId == commentId)
-                .Include(cd => cd.User)
-                .Select(cd => cd.User)
+            var userIds = await context.CommentDislikeSet
+                .Where(p => p.CommentId == commentId)
+                .Select(pl => pl.UserId)
                 .ToListAsync();
 
-            return Ok(new{count = users.Count, data = users});
+            if (userIds.Count == 0)
+            {
+                return NotFound($"No corresponding data found for ID: {commentId}");
+            }
+
+            var users = await context.UserSet
+                .Where(u => userIds.Contains(u.UserId))
+                .Select(u => new UserResponse 
+                {
+                    UserId = u.UserId,
+                    UserName = u.UserName,
+                    Points = u.Points,
+                    AvatarUrl = u.AvatarUrl,
+                    Gender = u.Gender,
+                    Profile = u.Profile,
+                    Region = u.Region,
+                })
+                .ToListAsync();
+
+            return Ok(new {count = users.Count, data = users});
         }
         catch (Exception ex)
         {

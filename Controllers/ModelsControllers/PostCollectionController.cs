@@ -2,6 +2,7 @@
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Sports_reservation_backend.Data;
+using Sports_reservation_backend.Models.ResponseModels;
 using Sports_reservation_backend.Models.TableModels;
 using Swashbuckle.AspNetCore.Annotations;
 
@@ -18,17 +19,30 @@ public class PostCollectionController(OracleDbContext context) : ControllerBase
     {
         try
         {
-            var users = await context.PostCollectionSet
+            var userIds = await context.PostCollectionSet
                 .Where(p => p.PostId == postId)
-                .Include(pl => pl.User)
-                .Select(pl => pl.User)
+                .Select(pl => pl.UserId)
                 .ToListAsync();
 
-            if (users.Count == 0)
+            if (userIds.Count == 0)
             {
                 return NotFound($"No corresponding data found for ID: {postId}");
             }
 
+            var users = await context.UserSet
+                .Where(u => userIds.Contains(u.UserId))
+                .Select(u => new UserResponse 
+                {
+                    UserId = u.UserId,
+                    UserName = u.UserName,
+                    Points = u.Points,
+                    AvatarUrl = u.AvatarUrl,
+                    Gender = u.Gender,
+                    Profile = u.Profile,
+                    Region = u.Region,
+                })
+                .ToListAsync();
+            
             return Ok(new { count = users.Count , data = users });
         }
         catch (Exception ex)

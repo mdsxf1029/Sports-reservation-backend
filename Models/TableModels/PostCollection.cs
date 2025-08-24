@@ -5,7 +5,7 @@ using Swashbuckle.AspNetCore.Annotations;
 
 namespace Sports_reservation_backend.Models.TableModels;
 
-[Table("USERS_COLLECTION")]
+[Table("POST_COLLECTION")]
 [SwaggerSchema("用户收藏")]
 [PrimaryKey(nameof(PostId), nameof(UserId))]
 public class PostCollection
