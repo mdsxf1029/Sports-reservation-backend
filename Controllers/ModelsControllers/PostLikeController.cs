@@ -101,7 +101,6 @@ public class PostLikeController(OracleDbContext context) : ControllerBase
         await context.SaveChangesAsync();
         return Ok($"Data with ID: {postId} {userId} has been added successfully.");
     }
-        
     
     [HttpDelete("{postId:int}-{userId:int}")]
     [SwaggerOperation(Summary = "取消点赞", Description = "取消点赞")]

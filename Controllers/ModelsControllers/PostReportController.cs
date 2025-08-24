@@ -235,21 +235,30 @@ public class PostReportController(OracleDbContext context) : ControllerBase
         
         try
         {
-            if (await context.UserSet.FindAsync(userId) == null)
+            var reportedPost = await context.PostSet
+                .FirstOrDefaultAsync(p => p.PostId == postId);
+            if (reportedPost == null)
+            {
+                return NotFound($"No corresponding data found for ID: {postId}");
+            }
+            
+            var reporter = await context.UserSet
+                .FirstOrDefaultAsync(u => u.UserId == userId);
+            if (reporter == null)
             {
                 return NotFound($"No corresponding data found for ID: {userId}");
             }
             
-            var author = await context.UserPostSet.FindAsync(postId);
-
-            if (author == null)
+            var userPost = await context.UserPostSet.FindAsync(postId);
+            if (userPost == null)
             {
                 return NotFound($"No corresponding data found for ID: {postId}");
             }
             
             report.ReporterId = userId;
             report.ReportedPostId = postId;
-            report.ReportedUserId = author.UserId;
+            report.ReportedUserId = userPost.UserId;
+            report.ReportTime = DateTime.Now;
             report.ReportStatus = "checking";
             
             context.PostReportSet.Add(report);

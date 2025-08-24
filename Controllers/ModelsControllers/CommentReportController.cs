@@ -224,9 +224,9 @@ public class CommentReportController (OracleDbContext context) : ControllerBase
         }
     }
     
-    [HttpPost("{postId:int}-{userId:int}")]
+    [HttpPost("{commentId:int}-{userId:int}")]
     [SwaggerOperation(Summary = "添加举报表信息", Description = "添加举报表信息")]
-    public async Task<IActionResult> AddReport(int postId, int userId, [FromBody] CommentReport report)
+    public async Task<IActionResult> AddReport(int commentId, int userId, [FromBody] CommentReport report)
     {
         if (!ModelState.IsValid)
         {
@@ -240,16 +240,19 @@ public class CommentReportController (OracleDbContext context) : ControllerBase
                 return NotFound($"No corresponding data found for ID: {userId}");
             }
             
-            var author = await context.UserPostSet.FindAsync(postId);
-
+            var author = await context.UserCommentSet.FindAsync(commentId);
             if (author == null)
             {
-                return NotFound($"No corresponding data found for ID: {postId}");
+                return NotFound($"No corresponding data found for ID: {commentId}");
             }
             
+            var reportedUser = await context.UserSet.FindAsync(author.UserId);
+            var reportedComment = await context.CommentSet.FindAsync(author.CommentId);
+            
             report.ReporterId = userId;
-            report.ReportedCommentId = postId;
+            report.ReportedCommentId = commentId;
             report.ReportedUserId = author.UserId;
+            report.ReportTime = DateTime.Now;
             report.ReportStatus = "checking";
             
             context.CommentReportSet.Add(report);

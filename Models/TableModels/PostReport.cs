@@ -11,6 +11,7 @@ public class PostReport
 {
     [Key]
     [Column("REPORT_ID")]
+    [DatabaseGenerated(DatabaseGeneratedOption.Identity)]
     [SwaggerSchema("举报ID")]
     public int ReportId { get; set; }
 
@@ -38,7 +39,6 @@ public class PostReport
     [SwaggerSchema("举报状态：checking / accepted / rejected")]
     [MaxLength(20)]
     public string? ReportStatus { get; set; }
-
 
     [ForeignKey(nameof(ReporterId))]
     public User? Reporter { get; set; }

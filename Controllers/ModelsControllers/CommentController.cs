@@ -242,43 +242,50 @@ public class CommentController(OracleDbContext context) : ControllerBase
         {
             return NotFound($"No corresponding data found for ID: {userId}");
         }
-        
+
         var post = await context.PostSet.FindAsync(postId);
         if (post == null)
         {
             return NotFound($"No corresponding data found for ID: {postId}");
         }
-
-        comment.CommentStatus = "public";
-        comment.CommentTime = DateTime.Now;
-        comment.LikeCount = 0;
-        comment.DislikeCount = 0;
         
-        context.CommentSet.Add(comment);
-        
-        post.CommentCount += 1;
-        
-        await context.SaveChangesAsync();
-
-        var postComment = new PostComment
+        try
         {
-            PostId = postId,
-            CommentId = comment.CommentId
-        };
-        
-        context.PostCommentSet.Add(postComment);
-        
-        var userComment = new UserComment
+            comment.CommentStatus = "public";
+            comment.CommentTime = DateTime.Now;
+            comment.LikeCount = 0;
+            comment.DislikeCount = 0;
+
+            context.CommentSet.Add(comment);
+
+            post.CommentCount += 1;
+
+            await context.SaveChangesAsync();
+
+            var postComment = new PostComment
+            {
+                PostId = postId,
+                CommentId = comment.CommentId
+            };
+
+            context.PostCommentSet.Add(postComment);
+
+            var userComment = new UserComment
+            {
+                UserId = userId,
+                CommentId = comment.CommentId
+            };
+
+            context.UserCommentSet.Add(userComment);
+
+            await context.SaveChangesAsync();
+
+            return CreatedAtAction(nameof(PostPostComment), new { id = comment.CommentId }, comment);
+        }
+        catch (Exception ex)
         {
-            UserId = userId,
-            CommentId = comment.CommentId
-        };
-        
-        context.UserCommentSet.Add(userComment);
-        
-        await context.SaveChangesAsync();
-        
-        return CreatedAtAction(nameof(PostPostComment), new { id = comment.CommentId }, comment);
+            return StatusCode(500, $"Internal server error: {ex.Message}");
+        }
     }
     
     [HttpPost("comment/{commentId:int}-{userId:int}")]

@@ -80,6 +80,18 @@ public class PostCollectionController(OracleDbContext context) : ControllerBase
     [SwaggerOperation(Summary = "收藏帖子", Description = "收藏帖子")]
     public async Task<IActionResult> AddCollection(int userId, int postId)
     {
+        var user = await context.UserSet.FindAsync(userId);
+        if (user == null)
+        {
+            return NotFound($"No corresponding data found for ID: {userId}");
+        }
+        
+        var post = await context.PostSet.FindAsync(postId);
+        if (post == null)
+        {
+            return NotFound($"No corresponding data found for ID: {postId}");
+        }
+        
         var exists = await context.PostCollectionSet
             .AnyAsync(pc => pc.UserId == userId && pc.PostId == postId);
 
@@ -96,13 +108,7 @@ public class PostCollectionController(OracleDbContext context) : ControllerBase
         };
 
         context.PostCollectionSet.Add(collection);
-        
-        var post = await context.PostSet.FindAsync(postId);
-        if (post != null)
-        {
-            post.LikeCount++;
-        }
-        
+        post.CollectionCount++;
         await context.SaveChangesAsync();
 
         return CreatedAtAction(nameof(AddCollection), new { userId, postId }, collection);

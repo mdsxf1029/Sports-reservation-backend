@@ -193,6 +193,7 @@ public class PostController(OracleDbContext context) : ControllerBase
             post.CommentCount = 0;
             post.CollectionCount = 0;
             post.PostTime = DateTime.Now;
+            post.PostStatus = "public";
 
             context.PostSet.Add(post);
 

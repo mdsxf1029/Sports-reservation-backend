@@ -22,7 +22,7 @@ public class PostCollection
     public int PostId { get; set; }
     
     [Required]
-    [Column("COLLECTED_TIME")]
+    [Column("COLLECT_TIME")]
     [SwaggerSchema(Description = "收藏时间")]
     public DateTime CollectedTime { get; set; }
     
