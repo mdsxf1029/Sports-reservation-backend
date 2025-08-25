@@ -83,7 +83,7 @@ public class PostController(OracleDbContext context) : ControllerBase
                                           likeCount = post.LikeCount, 
                                           dislikeCount = post.DislikeCount  
                                       },
-                                      user = new
+                                      author = new
                                       {
                                           userId = user.UserId,
                                           username = user.UserName, 
