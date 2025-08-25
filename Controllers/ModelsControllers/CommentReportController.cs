@@ -110,7 +110,7 @@ public class CommentReportController (OracleDbContext context) : ControllerBase
                 return NotFound($"No corresponding data found for ID: {reportId}");
             }
             
-            var reportedComment = await context.PostSet.FindAsync(report.ReportedCommentId);
+            var reportedComment = await context.CommentSet.FindAsync(report.ReportedCommentId);
             if (reportedComment == null)
             {
                 return NotFound($"No corresponding data found for ID: {reportId}");
