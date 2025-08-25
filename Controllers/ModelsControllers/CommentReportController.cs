@@ -27,6 +27,15 @@ public class CommentReportController (OracleDbContext context) : ControllerBase
             
             var reports = await context.CommentReportSet
                 .OrderBy(r => r.ReportId)
+                .Select(pr => new {
+                    pr.ReportId,
+                    pr.ReporterId,
+                    pr.ReportedUserId,
+                    pr.ReportedCommentId,
+                    pr.ReportReason,
+                    pr.ReportTime,
+                    pr.ReportStatus
+                })
                 .Skip((page - 1) * pageSize)
                 .Take(pageSize)
                 .ToListAsync();
@@ -50,8 +59,18 @@ public class CommentReportController (OracleDbContext context) : ControllerBase
     {
         try
         {
-            var report = await context.CommentReportSet.FindAsync(reportId);
-            
+            var report = await context.CommentReportSet
+                .Where(pr => pr.ReportId == reportId)
+                .Select(pr => new {
+                    pr.ReportId,
+                    pr.ReporterId,
+                    pr.ReportedUserId,
+                    pr.ReportedCommentId,
+                    pr.ReportReason,
+                    pr.ReportTime,
+                    pr.ReportStatus
+                })
+                .FirstOrDefaultAsync();
             if (report == null)
             {
                 return NotFound($"No corresponding data found for ID: {reportId}");
@@ -110,7 +129,7 @@ public class CommentReportController (OracleDbContext context) : ControllerBase
         }
     }
     
-    [HttpGet("{commentId:int}")]
+    [HttpGet("comment/{commentId:int}")]
     [SwaggerOperation(Summary = "根据CommentId获得数据", Description = "获得某评论的所有举报数据")]
     public async Task<ActionResult<object>> GetReportByComment(int commentId, [FromQuery] int page = 1, [FromQuery] int pageSize = 10)
     {
@@ -130,6 +149,15 @@ public class CommentReportController (OracleDbContext context) : ControllerBase
             
             var reports = await context.CommentReportSet
                 .Where(r => r.ReportedCommentId == commentId)
+                .Select(pr => new {
+                    pr.ReportId,
+                    pr.ReporterId,
+                    pr.ReportedUserId,
+                    pr.ReportedCommentId,
+                    pr.ReportReason,
+                    pr.ReportTime,
+                    pr.ReportStatus
+                })
                 .OrderBy(r => r.ReportId)
                 .Skip((page - 1) * pageSize)
                 .Take(pageSize)
@@ -168,6 +196,15 @@ public class CommentReportController (OracleDbContext context) : ControllerBase
             
             var reports = await context.CommentReportSet
                 .Where(r => r.ReporterId == userId)
+                .Select(pr => new {
+                    pr.ReportId,
+                    pr.ReporterId,
+                    pr.ReportedUserId,
+                    pr.ReportedCommentId,
+                    pr.ReportReason,
+                    pr.ReportTime,
+                    pr.ReportStatus
+                })
                 .OrderBy(r => r.ReportId)
                 .Skip((page - 1) * pageSize)
                 .Take(pageSize)
@@ -206,6 +243,15 @@ public class CommentReportController (OracleDbContext context) : ControllerBase
             
             var reports = await context.CommentReportSet
                 .Where(r => r.ReportedUserId == userId)
+                .Select(pr => new {
+                    pr.ReportId,
+                    pr.ReporterId,
+                    pr.ReportedUserId,
+                    pr.ReportedCommentId,
+                    pr.ReportReason,
+                    pr.ReportTime,
+                    pr.ReportStatus
+                })
                 .OrderBy(r => r.ReportId)
                 .Skip((page - 1) * pageSize)
                 .Take(pageSize)
@@ -258,7 +304,20 @@ public class CommentReportController (OracleDbContext context) : ControllerBase
             context.CommentReportSet.Add(report);
             await context.SaveChangesAsync();
             
-            return CreatedAtAction(nameof(AddReport), new { id = report.ReportId }, report);
+            var validInfo = await context.CommentReportSet
+                .Where(pr => pr.ReportId == report.ReportId)
+                .Select(pr => new {
+                    pr.ReportId,
+                    pr.ReporterId,
+                    pr.ReportedUserId,
+                    pr.ReportedCommentId,
+                    pr.ReportReason,
+                    pr.ReportTime,
+                    pr.ReportStatus
+                })
+                .FirstOrDefaultAsync();
+            
+            return CreatedAtAction(nameof(AddReport), new { id = report.ReportId }, validInfo);
         }
         catch (Exception ex)
         {

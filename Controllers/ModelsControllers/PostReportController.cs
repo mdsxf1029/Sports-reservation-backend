@@ -27,6 +27,15 @@ public class PostReportController(OracleDbContext context) : ControllerBase
             
             var reports = await context.PostReportSet
                 .OrderBy(r => r.ReportId)
+                .Select(pr => new {
+                    pr.ReportId,
+                    pr.ReporterId,
+                    pr.ReportedUserId,
+                    pr.ReportedPostId,
+                    pr.ReportReason,
+                    pr.ReportTime,
+                    pr.ReportStatus
+                })
                 .Skip((page - 1) * pageSize)
                 .Take(pageSize)
                 .ToListAsync();
@@ -50,8 +59,18 @@ public class PostReportController(OracleDbContext context) : ControllerBase
     {
         try
         {
-            var report = await context.PostReportSet.FindAsync(reportId);
-            
+            var report = await context.PostReportSet
+                .Where(pr => pr.ReportId == reportId)
+                .Select(pr => new {
+                    pr.ReportId,
+                    pr.ReporterId,
+                    pr.ReportedUserId,
+                    pr.ReportedPostId,
+                    pr.ReportReason,
+                    pr.ReportTime,
+                    pr.ReportStatus
+                })
+                .FirstOrDefaultAsync();
             if (report == null)
             {
                 return NotFound($"No corresponding data found for ID: {reportId}");
@@ -110,7 +129,7 @@ public class PostReportController(OracleDbContext context) : ControllerBase
         }
     }
     
-    [HttpGet("{postId:int}")]
+    [HttpGet("post/{postId:int}")]
     [SwaggerOperation(Summary = "根据PostId获得数据", Description = "获得某帖子的所有举报数据")]
     public async Task<ActionResult<object>> GetReportByPost(int postId, [FromQuery] int page = 1, [FromQuery] int pageSize = 10)
     {
@@ -130,6 +149,15 @@ public class PostReportController(OracleDbContext context) : ControllerBase
             
             var reports = await context.PostReportSet
                 .Where(r => r.ReportedPostId == postId)
+                .Select(pr => new {
+                    pr.ReportId,
+                    pr.ReporterId,
+                    pr.ReportedUserId,
+                    pr.ReportedPostId,
+                    pr.ReportReason,
+                    pr.ReportTime,
+                    pr.ReportStatus
+                })
                 .OrderBy(r => r.ReportId)
                 .Skip((page - 1) * pageSize)
                 .Take(pageSize)
@@ -168,6 +196,15 @@ public class PostReportController(OracleDbContext context) : ControllerBase
             
             var reports = await context.PostReportSet
                 .Where(r => r.ReporterId == userId)
+                .Select(pr => new {
+                    pr.ReportId,
+                    pr.ReporterId,
+                    pr.ReportedUserId,
+                    pr.ReportedPostId,
+                    pr.ReportReason,
+                    pr.ReportTime,
+                    pr.ReportStatus
+                })
                 .OrderBy(r => r.ReportId)
                 .Skip((page - 1) * pageSize)
                 .Take(pageSize)
@@ -206,6 +243,15 @@ public class PostReportController(OracleDbContext context) : ControllerBase
             
             var reports = await context.PostReportSet
                 .Where(r => r.ReportedUserId == userId)
+                .Select(pr => new {
+                    pr.ReportId,
+                    pr.ReporterId,
+                    pr.ReportedUserId,
+                    pr.ReportedPostId,
+                    pr.ReportReason,
+                    pr.ReportTime,
+                    pr.ReportStatus
+                })
                 .OrderBy(r => r.ReportId)
                 .Skip((page - 1) * pageSize)
                 .Take(pageSize)
@@ -264,7 +310,20 @@ public class PostReportController(OracleDbContext context) : ControllerBase
             context.PostReportSet.Add(report);
             await context.SaveChangesAsync();
             
-            return CreatedAtAction(nameof(AddReport), new { id = report.ReportId }, report);
+            var validInfo = await context.PostReportSet
+                .Where(pr => pr.ReportId == report.ReportId)
+                .Select(pr => new {
+                    pr.ReportId,
+                    pr.ReporterId,
+                    pr.ReportedUserId,
+                    pr.ReportedPostId,
+                    pr.ReportReason,
+                    pr.ReportTime,
+                    pr.ReportStatus
+                })
+                .FirstOrDefaultAsync();
+            
+            return CreatedAtAction(nameof(AddReport), new { id = report.ReportId }, validInfo);
         }
         catch (Exception ex)
         {
