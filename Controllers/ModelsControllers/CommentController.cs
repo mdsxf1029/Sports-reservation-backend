@@ -80,14 +80,7 @@ public class CommentController(OracleDbContext context) : ControllerBase
                 })
                 .FirstOrDefaultAsync();
             
-            var postComment = await context.PostCommentSet.FindAsync(commentId);
-            if (postComment == null)
-            {
-                return NotFound($"No corresponding data found for ID: {commentId}");
-            }
-            var post = await context.PostSet.FindAsync(postComment.PostId);
-            
-            return Ok(new {comment, user, post});
+            return Ok(new {comment, user});
         }
         catch (Exception ex)
         {
@@ -356,28 +349,67 @@ public class CommentController(OracleDbContext context) : ControllerBase
             {
                 return NotFound($"No corresponding data found for ID: {id}");
             }
+
+            // 删除与该评论相关的帖子评论记录
+            var commentPost = context.PostCommentSet.Where(pc => pc.CommentId == id);
+            if (commentPost.Any())
+            {
+                context.PostCommentSet.RemoveRange(commentPost);
+                // 同步修改对应帖子的评论数
+                var postId = commentPost.Select(pc => pc.PostId).FirstOrDefault();
+                var post = await context.PostSet.FindAsync(postId);
+                if (post != null)
+                {
+                    post.CommentCount = post.CommentCount > 0 ? post.CommentCount - 1 : 0;
+                    context.PostSet.Update(post);
+                }
+            }
             
-            var postComment = context.PostCommentSet.Where(pc => pc.CommentId == id);
-            
-            context.PostCommentSet.RemoveRange(postComment);
-            
-            var commentReply = context.CommentReplySet.Where(pc => pc.CommentId == id || pc.ReplyId == id);
-            
-            context.CommentReplySet.RemoveRange(commentReply);
-            
-            var commentUser = context.UserCommentSet.Where(uc => uc.CommentId == id);
-            
-            context.UserCommentSet.RemoveRange(commentUser);
-            
-            context.CommentSet.Remove(comment);
+            await DeleteCommentRepliesRecursive(id);
             
             await context.SaveChangesAsync();
             
             return Ok($"Data with ID: {id} has been deleted successfully.");
         }
+        catch (DbUpdateException dbEx)
+        {
+            return StatusCode(500, $"Database update error: {dbEx.Message}");
+        }
         catch (Exception ex)
         {
             return StatusCode(500, $"Internal server error: {ex.Message}");
+        }
+    }
+    
+    private async Task DeleteCommentRepliesRecursive(int parentId)
+    {
+        // 查找当前评论的所有回复
+        var replies = await context.CommentReplySet.Where(cr => cr.CommentId == parentId).ToListAsync();
+
+        // 递归地先删除所有子回复，确保从最底层开始删除
+        foreach (var reply in replies)
+        {
+            await DeleteCommentRepliesRecursive(reply.ReplyId);
+        }
+
+        // 删除当前评论的所有回复
+        context.CommentReplySet.RemoveRange(replies);
+
+        // 删除与当前评论及其所有子回复相关的点赞、踩和用户评论记录
+        var commentLikes = context.CommentLikeSet.Where(cl => cl.CommentId == parentId);
+        context.CommentLikeSet.RemoveRange(commentLikes);
+
+        var commentDislikes = context.CommentDislikeSet.Where(cd => cd.CommentId == parentId);
+        context.CommentDislikeSet.RemoveRange(commentDislikes);
+
+        var userComments = context.UserCommentSet.Where(uc => uc.CommentId == parentId);
+        context.UserCommentSet.RemoveRange(userComments);
+
+        // 删除与当前评论 ID 对应的 CommentSet 记录
+        var comment = await context.CommentSet.FindAsync(parentId);
+        if (comment != null)
+        {
+            context.CommentSet.Remove(comment);
         }
     }
     

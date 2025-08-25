@@ -53,22 +53,60 @@ public class PostCollectionController(OracleDbContext context) : ControllerBase
 
     [HttpGet("user/{userId:int}/posts")]
     [SwaggerOperation(Summary = "根据用户ID获取其收藏的帖子", Description = "根据用户ID获取其收藏的帖子")]
-    public async Task<ActionResult<object>> GetPostsByUser(int userId)
+    public async Task<ActionResult<object>> GetPostsByUser(int userId, [FromQuery] int page = 1, [FromQuery] int pageSize = 10)
     {
         try
         {
-            var posts = await context.PostCollectionSet
+            var totalCount = await context.PostCollectionSet
                 .Where(pc => pc.UserId == userId)
-                .Include(pl => pl.Post)
-                .Select(pl => pl.Post)
-                .ToListAsync();
+                .CountAsync();
+            
+            var posts = await (from pc in context.PostCollectionSet
+                               join post in context.PostSet on pc.PostId equals post.PostId
+                               join userPost in context.UserPostSet on post.PostId equals userPost.PostId
+                               join user in context.UserSet on userPost.UserId equals user.UserId
+                               where pc.UserId == userId
+                               orderby post.PostId descending
+                               select new
+                               {
+                                   postId = post.PostId,
+                                   content = post.PostContent,
+                                   title = post.PostTitle,
+                                   postTime = post.PostTime,
+                                   postStatus = post.PostStatus,
+                                   stats = new 
+                                   {
+                                       commentCount = post.CommentCount,  
+                                       collectionCount = post.CollectionCount, 
+                                       likeCount = post.LikeCount, 
+                                       dislikeCount = post.DislikeCount  
+                                   },
+                                   author = new
+                                   {
+                                       userId = user.UserId,
+                                       username = user.UserName, 
+                                       points = user.Points,  
+                                       avatarUrl = user.AvatarUrl,  
+                                       gender = user.Gender,  
+                                       profile = user.Profile,  
+                                       region = user.Region 
+                                   }
+                               })
+                               .Skip((page - 1) * pageSize)
+                               .Take(pageSize)
+                               .ToListAsync();
 
             if (posts.Count == 0)
             {
                 return NotFound($"No corresponding data found for ID: {userId}");
             }
 
-            return Ok(new { count = posts.Count , data = posts});
+            return Ok(new
+            {
+                page, pageSize, totalCount,
+                totalPages = (int)Math.Ceiling(totalCount / (double)pageSize),
+                list = posts
+            });
         }
         catch (Exception ex)
         {
@@ -111,7 +149,7 @@ public class PostCollectionController(OracleDbContext context) : ControllerBase
         post.CollectionCount++;
         await context.SaveChangesAsync();
 
-        return CreatedAtAction(nameof(AddCollection), new { userId, postId }, collection);
+        return Ok($"Data with ID: {postId} {userId} has been added successfully.");
     }
     
     [HttpDelete("{userId:int}-{postId:int}")]

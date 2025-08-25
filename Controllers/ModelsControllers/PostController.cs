@@ -64,18 +64,45 @@ public class PostController(OracleDbContext context) : ControllerBase
         {
             var totalCount = await context.PostSet.Where(post => post.PostStatus == "public").CountAsync();
             
-            var publicPosts = await context.PostSet
-                .Where(post => post.PostStatus == "public")
-                .OrderByDescending(p => p.PostId)
-                .Skip((page - 1) * pageSize)
-                .Take(pageSize)
-                .ToListAsync();
+            var publicPosts = await (from post in context.PostSet
+                                  join userPost in context.UserPostSet on post.PostId equals userPost.PostId
+                                  join user in context.UserSet on userPost.UserId equals user.UserId
+                                  where post.PostStatus == "public"
+                                  orderby post.PostId descending
+                                  select new
+                                  {
+                                      postId = post.PostId,
+                                      content = post.PostContent,
+                                      title = post.PostTitle,
+                                      postTime = post.PostTime,
+                                      postStatus = post.PostStatus,
+                                      stats = new 
+                                      {
+                                          commentCount = post.CommentCount,  
+                                          collectionCount = post.CollectionCount, 
+                                          likeCount = post.LikeCount, 
+                                          dislikeCount = post.DislikeCount  
+                                      },
+                                      user = new
+                                      {
+                                          userId = user.UserId,
+                                          username = user.UserName, 
+                                          points = user.Points,  
+                                          avatarUrl = user.AvatarUrl,  
+                                          gender = user.Gender,  
+                                          profile = user.Profile,  
+                                          region = user.Region 
+                                      }
+                                  })
+                                  .Skip((page - 1) * pageSize)
+                                  .Take(pageSize)
+                                  .ToListAsync();
             
             return Ok(new
             {
                 page, pageSize, totalCount,
                 totalPages = (int)Math.Ceiling(totalCount / (double)pageSize),
-                data = publicPosts
+                list = publicPosts
             });
         }
         catch (DbUpdateException dbEx)
@@ -188,12 +215,13 @@ public class PostController(OracleDbContext context) : ControllerBase
 
         try
         {
+            // 默认值设置
             post.LikeCount = 0;
             post.DislikeCount = 0;
             post.CommentCount = 0;
             post.CollectionCount = 0;
             post.PostTime = DateTime.Now;
-            post.PostStatus = "public";
+            post.PostStatus = (post.PostStatus == "private") ? "private" : "public";
 
             context.PostSet.Add(post);
 
@@ -230,18 +258,77 @@ public class PostController(OracleDbContext context) : ControllerBase
                 return NotFound($"No corresponding data found for ID: {id}");
             }
             
-            var userPost = context.UserPostSet.Where(up => up.PostId == id);
+            var postComments = context.PostCommentSet.Where(pc => pc.PostId == id);
+            // 递归删除与该帖子的评论及其回复
+            foreach (var postComment in postComments)
+            {
+                await DeleteCommentRecursive(postComment.CommentId);
+            }
             
+            // 查找与该帖子相关的用户帖子数据
+            var userPost = context.UserPostSet.Where(up => up.PostId == id);
             context.UserPostSet.RemoveRange(userPost);
+            
+            // 查找与该帖子相关的收藏数据
+            var postCollections = context.PostCollectionSet.Where(pc => pc.PostId == id);
+            context.PostCollectionSet.RemoveRange(postCollections);
+
+            // 查找与该帖子相关的点赞数据
+            var postLikes = context.PostLikeSet.Where(pl => pl.PostId == id);
+            context.PostLikeSet.RemoveRange(postLikes);
+
+            // 查找与该帖子相关的踩的数据
+            var postDislikes = context.PostDislikeSet.Where(pd => pd.PostId == id);
+            context.PostDislikeSet.RemoveRange(postDislikes);
+            
+            // 删除与该帖子相关的评论数据
+            context.PostCommentSet.RemoveRange(postComments);
+            
             context.PostSet.Remove(post);
             
             await context.SaveChangesAsync();
             
             return Ok($"Data with ID: {id} has been deleted successfully.");
         }
+        catch (DbUpdateException dbEx)
+        {
+            return StatusCode(500, $"Database update error: {dbEx.Message}");
+        }
         catch (Exception ex)
         {
             return StatusCode(500, $"Internal server error: {ex.Message}");
+        }
+    }
+
+    private async Task DeleteCommentRecursive(int commentId)
+    {
+        // 获取评论的所有回复
+        var replies = await context.CommentReplySet.Where(cr => cr.CommentId == commentId).ToListAsync();
+
+        // 先递归删除每个回复及其子回复
+        foreach (var reply in replies)
+        {
+            await DeleteCommentRecursive(reply.ReplyId);
+        }
+
+        // 删除当前评论的所有回复
+        context.CommentReplySet.RemoveRange(replies);
+
+        // 删除与当前评论（和它的所有子回复）相关的点赞、踩和用户评论记录
+        var commentLikes = context.CommentLikeSet.Where(cl => cl.CommentId == commentId);
+        context.CommentLikeSet.RemoveRange(commentLikes);
+
+        var commentDislikes = context.CommentDislikeSet.Where(cd => cd.CommentId == commentId);
+        context.CommentDislikeSet.RemoveRange(commentDislikes);
+
+        var userComments = context.UserCommentSet.Where(uc => uc.CommentId == commentId);
+        context.UserCommentSet.RemoveRange(userComments);
+
+        // 最后删除评论本身
+        var comment = await context.CommentSet.FindAsync(commentId);
+        if (comment != null)
+        {
+            context.CommentSet.Remove(comment);
         }
     }
 
