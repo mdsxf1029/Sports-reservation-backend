@@ -2,6 +2,7 @@
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Sports_reservation_backend.Data;
+using Sports_reservation_backend.Models.ResponseModels;
 using Sports_reservation_backend.Models.TableModels;
 using Swashbuckle.AspNetCore.Annotations;
 
@@ -14,17 +15,35 @@ public class PostDislikeController(OracleDbContext context) : ControllerBase
 {
     [HttpGet("post/{postId:int}")]
     [SwaggerOperation(Summary = "根据帖子ID获取点踩其的用户", Description = "根据帖子ID获取点踩其的用户")]
-    public async Task<IActionResult> GetUsersByPost(int postId)
+    public async Task<ActionResult<object>> GetUsersByPost(int postId)
     {
         try
         {
-            var users = await context.PostDislikeSet
-                .Where(pd => pd.PostId == postId)
-                .Include(pd => pd.User)
-                .Select(pd => pd.UserId)
+            var userIds = await context.PostDislikeSet
+                .Where(p => p.PostId == postId)
+                .Select(pl => pl.UserId)
                 .ToListAsync();
 
-            return Ok(users);
+            if (userIds.Count == 0)
+            {
+                return NotFound($"No corresponding data found for ID: {postId}");
+            }
+
+            var users = await context.UserSet
+                .Where(u => userIds.Contains(u.UserId))
+                .Select(u => new UserResponse 
+                {
+                    UserId = u.UserId,
+                    UserName = u.UserName,
+                    Points = u.Points,
+                    AvatarUrl = u.AvatarUrl,
+                    Gender = u.Gender,
+                    Profile = u.Profile,
+                    Region = u.Region,
+                })
+                .ToListAsync();
+
+            return Ok(new{ count = users.Count, data = users });
         }
         catch (Exception ex)
         {
@@ -34,17 +53,17 @@ public class PostDislikeController(OracleDbContext context) : ControllerBase
     
     [HttpGet("user/{userId:int}")]
     [SwaggerOperation(Summary = "根据用户ID获取其点踩的帖子", Description = "根据用户ID获取其点踩的帖子")]
-    public async Task<IActionResult> GetPostsByUser(int userId)
+    public async Task<ActionResult<object>> GetPostsByUser(int userId)
     {
         try
         {
             var posts = await context.PostDislikeSet
                 .Where(pd => pd.UserId == userId)
                 .Include(pd => pd.Post)
-                .Select(pd => pd.PostId)
+                .Select(pd => pd.Post)
                 .ToListAsync();
 
-            return Ok(posts);
+            return Ok(new {count = posts.Count, data = posts });
         }
         catch (Exception ex)
         {

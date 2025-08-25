@@ -2,6 +2,7 @@
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Sports_reservation_backend.Data;
+using Sports_reservation_backend.Models.ResponseModels;
 using Sports_reservation_backend.Models.TableModels;
 using Swashbuckle.AspNetCore.Annotations;
 
@@ -14,17 +15,35 @@ public class PostLikeController(OracleDbContext context) : ControllerBase
 {
     [HttpGet("post/{postId:int}")]
     [SwaggerOperation(Summary = "根据帖子ID获取点赞其的用户", Description = "根据帖子ID获取点赞其的用户")]
-    public async Task<IActionResult> GetUsersByPost(int postId)
+    public async Task<ActionResult<object>> GetUsersByPost(int postId)
     {
         try
         {
-            var users = await context.PostLikeSet
-                .Where(pl => pl.PostId == postId)
-                .Include(pl => pl.User)
+            var userIds = await context.PostLikeSet
+                .Where(p => p.PostId == postId)
                 .Select(pl => pl.UserId)
                 .ToListAsync();
 
-            return Ok(users);
+            if (userIds.Count == 0)
+            {
+                return NotFound($"No corresponding data found for ID: {postId}");
+            }
+
+            var users = await context.UserSet
+                .Where(u => userIds.Contains(u.UserId))
+                .Select(u => new UserResponse 
+                {
+                    UserId = u.UserId,
+                    UserName = u.UserName,
+                    Points = u.Points,
+                    AvatarUrl = u.AvatarUrl,
+                    Gender = u.Gender,
+                    Profile = u.Profile,
+                    Region = u.Region,
+                })
+                .ToListAsync();
+
+            return Ok(new { count = users.Count, data = users });
         }
         catch (Exception ex)
         {
@@ -34,17 +53,17 @@ public class PostLikeController(OracleDbContext context) : ControllerBase
     
     [HttpGet("user/{userId:int}")]
     [SwaggerOperation(Summary = "根据用户ID获取其点赞的帖子", Description = "根据用户ID获取其点赞的帖子")]
-    public async Task<IActionResult> GetPostsByUser(int userId)
+    public async Task<ActionResult<object>> GetPostsByUser(int userId)
     {
         try
         {
             var posts = await context.PostLikeSet
                 .Where(pl => pl.UserId == userId)
                 .Include(pl => pl.Post)
-                .Select(pl => pl.PostId)
+                .Select(pl => pl.Post)
                 .ToListAsync();
 
-            return Ok(posts);
+            return Ok(new { count = posts.Count, data = posts });
         }
         catch (Exception ex)
         {
@@ -82,7 +101,6 @@ public class PostLikeController(OracleDbContext context) : ControllerBase
         await context.SaveChangesAsync();
         return Ok($"Data with ID: {postId} {userId} has been added successfully.");
     }
-        
     
     [HttpDelete("{postId:int}-{userId:int}")]
     [SwaggerOperation(Summary = "取消点赞", Description = "取消点赞")]

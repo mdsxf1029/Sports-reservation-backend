@@ -2,6 +2,7 @@
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Sports_reservation_backend.Data;
+using Sports_reservation_backend.Models.ResponseModels;
 using Sports_reservation_backend.Models.TableModels;
 using Swashbuckle.AspNetCore.Annotations;
 
@@ -14,21 +15,35 @@ public class PostCollectionController(OracleDbContext context) : ControllerBase
 {
     [HttpGet("post/{postId:int}/users")]
     [SwaggerOperation(Summary = "根据帖子ID获取收藏其的用户", Description = "根据帖子ID获取收藏其的用户")]
-    public async Task<ActionResult<IEnumerable<int>>> GetUsersByPost(int postId)
+    public async Task<ActionResult<object>> GetUsersByPost(int postId)
     {
         try
         {
-            var users = await context.PostCollectionSet
+            var userIds = await context.PostCollectionSet
                 .Where(p => p.PostId == postId)
-                .Select(p => p.UserId)
+                .Select(pl => pl.UserId)
                 .ToListAsync();
 
-            if (users.Count == 0)
+            if (userIds.Count == 0)
             {
                 return NotFound($"No corresponding data found for ID: {postId}");
             }
 
-            return Ok(users);
+            var users = await context.UserSet
+                .Where(u => userIds.Contains(u.UserId))
+                .Select(u => new UserResponse 
+                {
+                    UserId = u.UserId,
+                    UserName = u.UserName,
+                    Points = u.Points,
+                    AvatarUrl = u.AvatarUrl,
+                    Gender = u.Gender,
+                    Profile = u.Profile,
+                    Region = u.Region,
+                })
+                .ToListAsync();
+            
+            return Ok(new { count = users.Count , data = users });
         }
         catch (Exception ex)
         {
@@ -38,21 +53,60 @@ public class PostCollectionController(OracleDbContext context) : ControllerBase
 
     [HttpGet("user/{userId:int}/posts")]
     [SwaggerOperation(Summary = "根据用户ID获取其收藏的帖子", Description = "根据用户ID获取其收藏的帖子")]
-    public async Task<ActionResult<IEnumerable<int>>> GetPostsByUser(int userId)
+    public async Task<ActionResult<object>> GetPostsByUser(int userId, [FromQuery] int page = 1, [FromQuery] int pageSize = 10)
     {
         try
         {
-            var posts = await context.PostCollectionSet
+            var totalCount = await context.PostCollectionSet
                 .Where(pc => pc.UserId == userId)
-                .Select(pc => pc.PostId)
-                .ToListAsync();
+                .CountAsync();
+            
+            var posts = await (from pc in context.PostCollectionSet
+                               join post in context.PostSet on pc.PostId equals post.PostId
+                               join userPost in context.UserPostSet on post.PostId equals userPost.PostId
+                               join user in context.UserSet on userPost.UserId equals user.UserId
+                               where pc.UserId == userId
+                               orderby post.PostId descending
+                               select new
+                               {
+                                   postId = post.PostId,
+                                   content = post.PostContent,
+                                   title = post.PostTitle,
+                                   postTime = post.PostTime,
+                                   postStatus = post.PostStatus,
+                                   stats = new 
+                                   {
+                                       commentCount = post.CommentCount,  
+                                       collectionCount = post.CollectionCount, 
+                                       likeCount = post.LikeCount, 
+                                       dislikeCount = post.DislikeCount  
+                                   },
+                                   author = new
+                                   {
+                                       userId = user.UserId,
+                                       username = user.UserName, 
+                                       points = user.Points,  
+                                       avatarUrl = user.AvatarUrl,  
+                                       gender = user.Gender,  
+                                       profile = user.Profile,  
+                                       region = user.Region 
+                                   }
+                               })
+                               .Skip((page - 1) * pageSize)
+                               .Take(pageSize)
+                               .ToListAsync();
 
             if (posts.Count == 0)
             {
                 return NotFound($"No corresponding data found for ID: {userId}");
             }
 
-            return Ok(posts);
+            return Ok(new
+            {
+                page, pageSize, totalCount,
+                totalPages = (int)Math.Ceiling(totalCount / (double)pageSize),
+                list = posts
+            });
         }
         catch (Exception ex)
         {
@@ -64,6 +118,18 @@ public class PostCollectionController(OracleDbContext context) : ControllerBase
     [SwaggerOperation(Summary = "收藏帖子", Description = "收藏帖子")]
     public async Task<IActionResult> AddCollection(int userId, int postId)
     {
+        var user = await context.UserSet.FindAsync(userId);
+        if (user == null)
+        {
+            return NotFound($"No corresponding data found for ID: {userId}");
+        }
+        
+        var post = await context.PostSet.FindAsync(postId);
+        if (post == null)
+        {
+            return NotFound($"No corresponding data found for ID: {postId}");
+        }
+        
         var exists = await context.PostCollectionSet
             .AnyAsync(pc => pc.UserId == userId && pc.PostId == postId);
 
@@ -80,16 +146,10 @@ public class PostCollectionController(OracleDbContext context) : ControllerBase
         };
 
         context.PostCollectionSet.Add(collection);
-        
-        var post = await context.PostSet.FindAsync(postId);
-        if (post != null)
-        {
-            post.LikeCount++;
-        }
-        
+        post.CollectionCount++;
         await context.SaveChangesAsync();
 
-        return CreatedAtAction(nameof(AddCollection), new { userId, postId }, collection);
+        return Ok($"Data with ID: {postId} {userId} has been added successfully.");
     }
     
     [HttpDelete("{userId:int}-{postId:int}")]

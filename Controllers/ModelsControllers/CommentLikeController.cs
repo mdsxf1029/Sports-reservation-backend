@@ -2,6 +2,7 @@
 using Microsoft.EntityFrameworkCore;
 using Swashbuckle.AspNetCore.Annotations;
 using Sports_reservation_backend.Data;
+using Sports_reservation_backend.Models.ResponseModels;
 using Sports_reservation_backend.Models.TableModels;
 
 namespace Sports_reservation_backend.Controllers.ModelsControllers;
@@ -13,17 +14,35 @@ public class CommentLikeController(OracleDbContext context) : ControllerBase
 {
     [HttpGet("comment/{commentId:int}")]
     [SwaggerOperation(Summary = "根据评论ID获取点赞其的用户", Description = "根据评论ID获取点赞其的用户")]
-    public async Task<IActionResult> GetUsersByComment(int commentId)
+    public async Task<ActionResult<object>> GetUsersByComment(int commentId)
     {
         try
         {
-            var users = await context.CommentLikeSet
-                .Where(cl => cl.CommentId == commentId)
-                .Include(cl => cl.User)
-                .Select(cl => cl.UserId)
+            var userIds = await context.CommentLikeSet
+                .Where(p => p.CommentId == commentId)
+                .Select(pl => pl.UserId)
                 .ToListAsync();
 
-            return Ok(users);
+            if (userIds.Count == 0)
+            {
+                return NotFound($"No corresponding data found for ID: {commentId}");
+            }
+
+            var users = await context.UserSet
+                .Where(u => userIds.Contains(u.UserId))
+                .Select(u => new UserResponse 
+                {
+                    UserId = u.UserId,
+                    UserName = u.UserName,
+                    Points = u.Points,
+                    AvatarUrl = u.AvatarUrl,
+                    Gender = u.Gender,
+                    Profile = u.Profile,
+                    Region = u.Region,
+                })
+                .ToListAsync();
+
+            return Ok(new { count = users.Count, data = users });
         }
         catch (Exception ex)
         {
@@ -33,17 +52,17 @@ public class CommentLikeController(OracleDbContext context) : ControllerBase
     
     [HttpGet("user/{userId:int}")]
     [SwaggerOperation(Summary = "根据用户ID获取其点赞的评论", Description = "根据用户ID获取其点赞的评论")]
-    public async Task<IActionResult> GetCommentsByUser(int userId)
+    public async Task<ActionResult<object>> GetCommentsByUser(int userId)
     {
         try
         {
             var comments = await context.CommentLikeSet
                 .Where(cl => cl.UserId == userId)
                 .Include(cl => cl.Comment)
-                .Select(cl => cl.CommentId)
+                .Select(cl => cl.Comment)
                 .ToListAsync();
 
-            return Ok(comments);
+            return Ok(new { count = comments.Count, data = comments });
         }
         catch (Exception ex)
         {
