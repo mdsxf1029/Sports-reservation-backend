@@ -155,25 +155,25 @@ namespace Sports_reservation_backend.Controllers
                 // 更新字段，只有在传入值时才更新，避免覆盖为空
                 if (!string.IsNullOrEmpty(request.UserName))
                     user.UserName = request.UserName;
-                
+
                 if (!string.IsNullOrEmpty(request.Telephone))
                     user.Telephone = request.Telephone;
-                
+
                 if (!string.IsNullOrEmpty(request.Email))
                     user.Email = request.Email;
-                
+
                 if (!string.IsNullOrEmpty(request.Gender))
                     user.Gender = request.Gender;
-                
+
                 if (request.Birthday.HasValue)
                     user.Birthday = request.Birthday.Value;
-                
+
                 if (!string.IsNullOrEmpty(request.AvatarUrl))
                     user.AvatarUrl = request.AvatarUrl;
-                
+
                 if (!string.IsNullOrEmpty(request.Region))
                     user.Region = request.Region;
-                
+
                 if (!string.IsNullOrEmpty(request.Profile))
                     user.Profile = request.Profile;
 
@@ -345,7 +345,7 @@ namespace Sports_reservation_backend.Controllers
                         content = n.Content,
                         isRead = n.IsRead == 1, // 转为 bool
                         createTime = n.CreateTime
-                })
+                    })
                     .ToListAsync();
 
                 return Ok(new
