@@ -33,13 +33,13 @@ public class PostDislikeController(OracleDbContext context) : ControllerBase
                 .Where(u => userIds.Contains(u.UserId))
                 .Select(u => new UserResponse 
                 {
-                    UserId = u.UserId,
-                    UserName = u.UserName,
-                    Points = u.Points,
-                    AvatarUrl = u.AvatarUrl,
-                    Gender = u.Gender,
-                    Profile = u.Profile,
-                    Region = u.Region,
+                    userId = u.UserId,
+                    username = u.UserName,
+                    points = u.Points,
+                    avatarUrl = u.AvatarUrl,
+                    gender = u.Gender,
+                    profile = u.Profile,
+                    region = u.Region,
                 })
                 .ToListAsync();
 

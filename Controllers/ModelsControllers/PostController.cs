@@ -135,21 +135,36 @@ public class PostController(OracleDbContext context) : ControllerBase
             {
                 return NotFound($"No corresponding data found for ID: {id}");
             }
+            
             var user = await context.UserSet
                 .Where(u => u.UserId == userPost.UserId)
                 .Select(u => new UserResponse
                 {
-                    UserId = u.UserId,
-                    UserName = u.UserName,
-                    Points = u.Points,
-                    AvatarUrl = u.AvatarUrl,
-                    Gender = u.Gender,
-                    Profile = u.Profile,
-                    Region = u.Region,
+                    userId = u.UserId,
+                    username = u.UserName,
+                    points = u.Points,
+                    avatarUrl = u.AvatarUrl,
+                    gender = u.Gender,
+                    profile = u.Profile,
+                    region = u.Region,
                 })
                 .FirstOrDefaultAsync();
             
-            return Ok(new {post, user});
+            return Ok(new
+            {
+                postId = post.PostId,
+                title = post.PostTitle,
+                content = post.PostContent,
+                publishTime = post.PostTime,
+                author = user,
+                stats = new
+                {
+                    commentCount = post.CommentCount,
+                    collectionCount = post.CollectionCount,
+                    likeCount = post.LikeCount,
+                    dislikeCount = post.DislikeCount,
+                }
+            });
         }
         catch (Exception ex)
         {
