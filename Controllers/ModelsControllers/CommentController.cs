@@ -70,13 +70,13 @@ public class CommentController(OracleDbContext context) : ControllerBase
                 .Where(u => u.UserId == userComment.UserId)
                 .Select(u => new UserResponse
                 {
-                    UserId = u.UserId,
-                    UserName = u.UserName,
-                    Points = u.Points,
-                    AvatarUrl = u.AvatarUrl,
-                    Gender = u.Gender,
-                    Profile = u.Profile,
-                    Region = u.Region,
+                    userId = u.UserId,
+                    username = u.UserName,
+                    points = u.Points,
+                    avatarUrl = u.AvatarUrl,
+                    gender = u.Gender,
+                    profile = u.Profile,
+                    region = u.Region,
                 })
                 .FirstOrDefaultAsync();
             
@@ -137,37 +137,37 @@ public class CommentController(OracleDbContext context) : ControllerBase
     [SwaggerResponse(200, "获取数据成功")]
     [SwaggerResponse(404, "未找到对应数据")]
     [SwaggerResponse(500, "服务器内部错误")]
-    public async Task<ActionResult<object>> GetCommentByPostId(int postId, [FromQuery] int page = 1,
-        [FromQuery] int pageSize = 10)
+    public async Task<ActionResult<object>> GetCommentByPostId(int postId)
     {
-        page = page < 1 ? 1 : page;
-        
-        pageSize = pageSize < 1 ? 10 : pageSize;
-
         try
         {
-            var totalCount = await context.PostCommentSet.Where(pc => pc.PostId == postId).CountAsync();
-            
-            var comments =await context.PostCommentSet
-                .Where(pc => pc.PostId == postId)
-                .Include(pc => pc.Comment)
-                .OrderByDescending(pc => pc.CommentId)
-                .Skip((page - 1) * pageSize)
-                .Take(pageSize)
-                .Select(pc => pc.Comment)
-                .ToListAsync();
+            var comments = await (from pc in context.PostCommentSet
+                    join c in context.CommentSet on pc.CommentId equals c.CommentId
+                    join uc in context.UserCommentSet on c.CommentId equals uc.CommentId
+                    join u in context.UserSet on uc.UserId equals u.UserId
+                    where pc.PostId == postId
+                    orderby pc.CommentId descending
+                    select new 
+                    {
+                        commentId = c.CommentId,
+                        content = c.CommentContent,
+                        publishTime = c.CommentTime,
+                        author = new {
+                            userId = u.UserId,
+                            username = u.UserName,
+                            avatar = u.AvatarUrl
+                        },
+                        likeCount = c.LikeCount,
+                        dislikeCount = c.DislikeCount,
+                    })
+                    .ToListAsync();
 
             if (comments.Count == 0)
             {
                 return NotFound($"No replies found for PostId: {postId}");
             }
             
-            return Ok(new
-            {
-                page, pageSize, totalCount,
-                totalPages = (int)Math.Ceiling(totalCount / (double)pageSize),
-                data = comments
-            });
+            return Ok(new { comments });
         }
         catch (Exception ex)
         {

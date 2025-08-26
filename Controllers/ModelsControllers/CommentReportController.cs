@@ -79,13 +79,13 @@ public class CommentReportController (OracleDbContext context) : ControllerBase
             var reporter = await context.UserSet.Where(u => u.UserId == report.ReporterId)
                 .Select(u => new UserResponse
                 {
-                    UserId = u.UserId,
-                    UserName = u.UserName,
-                    Points = u.Points,
-                    AvatarUrl = u.AvatarUrl,
-                    Gender = u.Gender,
-                    Profile = u.Profile,
-                    Region = u.Region,
+                    userId = u.UserId,
+                    username = u.UserName,
+                    points = u.Points,
+                    avatarUrl = u.AvatarUrl,
+                    gender = u.Gender,
+                    profile = u.Profile,
+                    region = u.Region,
                 })
                 .FirstOrDefaultAsync();
             if (reporter == null)
@@ -96,13 +96,13 @@ public class CommentReportController (OracleDbContext context) : ControllerBase
             var reportedUser = await context.UserSet.Where(u => u.UserId == report.ReportedUserId)
                 .Select(u => new UserResponse
                 {
-                    UserId = u.UserId,
-                    UserName = u.UserName,
-                    Points = u.Points,
-                    AvatarUrl = u.AvatarUrl,
-                    Gender = u.Gender,
-                    Profile = u.Profile,
-                    Region = u.Region,
+                    userId = u.UserId,
+                    username = u.UserName,
+                    points = u.Points,
+                    avatarUrl = u.AvatarUrl,
+                    gender = u.Gender,
+                    profile = u.Profile,
+                    region = u.Region,
                 })
                 .FirstOrDefaultAsync();
             if (reportedUser == null)
