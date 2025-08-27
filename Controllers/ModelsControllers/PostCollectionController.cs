@@ -1,4 +1,5 @@
-﻿using Microsoft.AspNetCore.Http.HttpResults;
+﻿using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Http.HttpResults;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Sports_reservation_backend.Data;
@@ -50,7 +51,7 @@ public class PostCollectionController(OracleDbContext context) : ControllerBase
             return StatusCode(500, $"Internal server error: {ex.Message}");
         }
     }
-
+    
     [HttpGet("user/{userId:int}/posts")]
     [SwaggerOperation(Summary = "根据用户ID获取其收藏的帖子", Description = "根据用户ID获取其收藏的帖子")]
     public async Task<ActionResult<object>> GetPostsByUser(int userId, [FromQuery] int page = 1, [FromQuery] int pageSize = 10)
@@ -62,39 +63,54 @@ public class PostCollectionController(OracleDbContext context) : ControllerBase
                 .CountAsync();
             
             var posts = await (from pc in context.PostCollectionSet
-                               join post in context.PostSet on pc.PostId equals post.PostId
-                               join userPost in context.UserPostSet on post.PostId equals userPost.PostId
-                               join user in context.UserSet on userPost.UserId equals user.UserId
-                               where pc.UserId == userId
-                               orderby post.PostId descending
-                               select new
-                               {
-                                   postId = post.PostId,
-                                   content = post.PostContent,
-                                   title = post.PostTitle,
-                                   postTime = post.PostTime,
-                                   postStatus = post.PostStatus,
-                                   stats = new 
+                                   where pc.UserId == userId
+                                   // 关联帖子
+                                   join post in context.PostSet on pc.PostId equals post.PostId
+                                   // 关联作者
+                                   join userPost in context.UserPostSet on post.PostId equals userPost.PostId
+                                   join user in context.UserSet on userPost.UserId equals user.UserId
+                                   // 关联当前用户是否喜欢
+                                   join like in context.PostLikeSet.Where(l => l.UserId == userId) on post.PostId equals like.PostId into likeGroup
+                                   from userLike in likeGroup.DefaultIfEmpty()
+                                   // 关联当前用户是否点踩
+                                   join dislike in context.PostDislikeSet.Where(d => d.UserId == userId) on post.PostId equals dislike.PostId into dislikeGroup
+                                   from userDislike in dislikeGroup.DefaultIfEmpty()
+                                   // 按postId降序排列
+                                   orderby post.PostId descending
+                                   select new
                                    {
-                                       commentCount = post.CommentCount,  
-                                       collectionCount = post.CollectionCount, 
-                                       likeCount = post.LikeCount, 
-                                       dislikeCount = post.DislikeCount  
-                                   },
-                                   author = new
-                                   {
-                                       userId = user.UserId,
-                                       username = user.UserName, 
-                                       points = user.Points,  
-                                       avatarUrl = user.AvatarUrl,  
-                                       gender = user.Gender,  
-                                       profile = user.Profile,  
-                                       region = user.Region 
-                                   }
-                               })
-                               .Skip((page - 1) * pageSize)
-                               .Take(pageSize)
-                               .ToListAsync();
+                                       postId = post.PostId,
+                                       content = post.PostContent,
+                                       title = post.PostTitle,
+                                       postTime = post.PostTime,
+                                       postStatus = post.PostStatus,
+                                       stats = new 
+                                       {
+                                           commentCount = post.CommentCount,  
+                                           collectionCount = post.CollectionCount, 
+                                           likeCount = post.LikeCount, 
+                                           dislikeCount = post.DislikeCount  
+                                       },
+                                       author = new
+                                       {
+                                           userId = user.UserId,
+                                           username = user.UserName, 
+                                           points = user.Points,  
+                                           avatarUrl = user.AvatarUrl,  
+                                           gender = user.Gender,  
+                                           profile = user.Profile,  
+                                           region = user.Region 
+                                       },
+                                       currentUserInteraction = new
+                                       {
+                                           hasLiked = userLike != null,
+                                           hasDisliked = userDislike != null,
+                                           hasCollected = true,
+                                       }
+                                   })
+                                   .Skip((page - 1) * pageSize)
+                                   .Take(pageSize)
+                                   .ToListAsync();
 
             if (posts.Count == 0)
             {

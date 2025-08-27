@@ -1,4 +1,5 @@
-﻿using Microsoft.AspNetCore.Http.HttpResults;
+﻿using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Http.HttpResults;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Sports_reservation_backend.Data;
@@ -13,6 +14,7 @@ namespace Sports_reservation_backend.Controllers.ModelsControllers;
 [SwaggerTag("帖子相关api")]
 public class PostController(OracleDbContext context) : ControllerBase
 {
+    [Authorize]
     [HttpGet]
     [SwaggerOperation(Summary = "获取所有的帖子", Description = "获取所有的帖子")]
     [SwaggerResponse(200,"获取数据成功")]
@@ -25,49 +27,28 @@ public class PostController(OracleDbContext context) : ControllerBase
         
         try
         {
+            var userIdStr = User.FindFirst("userId")?.Value;
+            if (string.IsNullOrEmpty(userIdStr) || !int.TryParse(userIdStr, out int userId))
+            {
+                return BadRequest("token无效");
+            }
+            
             var totalCount = await context.PostSet.CountAsync();
             
-            var posts = await context.PostSet
-                .OrderByDescending(p => p.PostId)
-                .Skip((page - 1) * pageSize)
-                .Take(pageSize)
-                .ToListAsync();
-            
-            return Ok(new
-            {
-                page, pageSize, totalCount,
-                totalPages = (int)Math.Ceiling(totalCount / (double)pageSize),
-                data = posts
-            });
-        }
-        catch (DbUpdateException dbEx)
-        {
-            return StatusCode(500, $"Database update error: {dbEx.Message}");
-        }
-        catch (Exception ex)
-        {
-            return StatusCode(500, $"Internal server error: {ex.Message}");
-        }
-    }
-
-    [HttpGet("public")]
-    [SwaggerOperation(Summary = "获取所有公开的帖子", Description = "获取所有公开的帖子")]
-    [SwaggerResponse(200,"获取数据成功")]
-    [SwaggerResponse(500,"数据库内部出错")]
-    public async Task<ActionResult<object>> GetPublicPost([FromQuery] int page = 1, [FromQuery] int pageSize = 10)
-    {
-        page = page < 1 ? 1 : page;
-        
-        pageSize = pageSize < 1 ? 10 : pageSize;
-        
-        try
-        {
-            var totalCount = await context.PostSet.Where(post => post.PostStatus == "public").CountAsync();
-            
-            var publicPosts = await (from post in context.PostSet
+            var posts = await (from post in context.PostSet
+                                  // 关联作者
                                   join userPost in context.UserPostSet on post.PostId equals userPost.PostId
                                   join user in context.UserSet on userPost.UserId equals user.UserId
-                                  where post.PostStatus == "public"
+                                  // 关联当前用户是否喜爱
+                                  join like in context.PostLikeSet.Where(l => l.UserId == userId) on post.PostId equals like.PostId into likeGroup
+                                  from userLike in likeGroup.DefaultIfEmpty()
+                                  // 关联当前用户是否点踩
+                                  join dislike in context.PostDislikeSet.Where(d => d.UserId == userId) on post.PostId equals dislike.PostId into dislikeGroup
+                                  from userDislike in dislikeGroup.DefaultIfEmpty()
+                                  // 关联当前用户是否收藏
+                                  join collection in context.PostCollectionSet.Where(c => c.UserId == userId) on post.PostId equals collection.PostId into collectionGroup
+                                  from userCollection in collectionGroup.DefaultIfEmpty()
+                                  // 按照postId降序排列
                                   orderby post.PostId descending
                                   select new
                                   {
@@ -92,6 +73,101 @@ public class PostController(OracleDbContext context) : ControllerBase
                                           gender = user.Gender,  
                                           profile = user.Profile,  
                                           region = user.Region 
+                                      },
+                                      currentUserInteraction = new
+                                      {
+                                          hasLiked = userLike != null,
+                                          hasDisliked = userDislike != null,
+                                          hasCollected = userCollection != null
+                                      }
+                                  })
+                                  .Skip((page - 1) * pageSize)
+                                  .Take(pageSize)
+                                  .ToListAsync();
+            
+            return Ok(new
+            {
+                page, pageSize, totalCount,
+                totalPages = (int)Math.Ceiling(totalCount / (double)pageSize),
+                list = posts
+            });
+        }
+        catch (DbUpdateException dbEx)
+        {
+            return StatusCode(500, $"Database update error: {dbEx.Message}");
+        }
+        catch (Exception ex)
+        {
+            return StatusCode(500, $"Internal server error: {ex.Message}");
+        }
+    }
+
+    [Authorize]
+    [HttpGet("public")]
+    [SwaggerOperation(Summary = "获取所有公开的帖子", Description = "获取所有公开的帖子")]
+    [SwaggerResponse(200,"获取数据成功")]
+    [SwaggerResponse(500,"数据库内部出错")]
+    public async Task<ActionResult<object>> GetPublicPost([FromQuery] int page = 1, [FromQuery] int pageSize = 10)
+    {
+        page = page < 1 ? 1 : page;
+        
+        pageSize = pageSize < 1 ? 10 : pageSize;
+        
+        try
+        {
+            var userIdStr = User.FindFirst("userId")?.Value;
+            if (string.IsNullOrEmpty(userIdStr) || !int.TryParse(userIdStr, out int userId))
+            {
+                return BadRequest("token无效");
+            }
+            
+            var totalCount = await context.PostSet.Where(post => post.PostStatus == "public").CountAsync();
+            
+            var publicPosts = await (from post in context.PostSet
+                                  where post.PostStatus == "public"
+                                  // 关联作者
+                                  join userPost in context.UserPostSet on post.PostId equals userPost.PostId
+                                  join user in context.UserSet on userPost.UserId equals user.UserId
+                                  // 关联当前用户是否喜爱
+                                  join like in context.PostLikeSet.Where(l => l.UserId == userId) on post.PostId equals like.PostId into likeGroup
+                                  from userLike in likeGroup.DefaultIfEmpty()
+                                  // 关联当前用户是否点踩
+                                  join dislike in context.PostDislikeSet.Where(d => d.UserId == userId) on post.PostId equals dislike.PostId into dislikeGroup
+                                  from userDislike in dislikeGroup.DefaultIfEmpty()
+                                  // 关联当前用户是否收藏
+                                  join collection in context.PostCollectionSet.Where(c => c.UserId == userId) on post.PostId equals collection.PostId into collectionGroup
+                                  from userCollection in collectionGroup.DefaultIfEmpty()
+                                  // 按照postId降序排列
+                                  orderby post.PostId descending
+                                  select new
+                                  {
+                                      postId = post.PostId,
+                                      content = post.PostContent,
+                                      title = post.PostTitle,
+                                      postTime = post.PostTime,
+                                      postStatus = post.PostStatus,
+                                      stats = new 
+                                      {
+                                          commentCount = post.CommentCount,  
+                                          collectionCount = post.CollectionCount, 
+                                          likeCount = post.LikeCount, 
+                                          dislikeCount = post.DislikeCount  
+                                      },
+                                      author = new
+                                      {
+                                          userId = user.UserId,
+                                          username = user.UserName, 
+                                          points = user.Points,  
+                                          avatarUrl = user.AvatarUrl,  
+                                          gender = user.Gender,  
+                                          profile = user.Profile,  
+                                          region = user.Region 
+                                      },
+                                      currentUserInteraction = new
+                                      {
+                                          hasLiked = userLike != null,
+                                          hasDisliked = userDislike != null,
+                                          hasCollected = userCollection != null
                                       }
                                   })
                                   .Skip((page - 1) * pageSize)
