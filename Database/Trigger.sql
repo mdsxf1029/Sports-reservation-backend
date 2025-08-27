@@ -21,6 +21,11 @@ begin
 end;
 /
 
+
+
+
+
+
 --创建 sequence 用于post_id自增
 create sequence post_id_seq start with 1 increment by 1;
 
@@ -33,6 +38,9 @@ begin
 end;
 /
 
+
+
+
 -- 创建 sequence 用于 comment_id 自增
 create sequence comment_id_seq start with 1 increment by 1;
 
@@ -44,6 +52,10 @@ begin
    :new.comment_id := comment_id_seq.nextval;
 end;
 /
+
+
+
+
 
 -- 创建 SEQUENCE 用于 report_id 自增
 create sequence report_id_seq start with 1 increment by 1;
@@ -58,6 +70,11 @@ begin
 end;
 /
 
+
+
+
+
+
 -- 创建 SEQUENCE 用于 report_id 自增
 create sequence comment_report_id_seq start with 1 increment by 1;
 
@@ -69,6 +86,11 @@ begin
    :new.report_id := comment_report_id_seq.nextval;
 end;
 /
+
+
+
+
+
 
 -- 创建 SEQUENCE 用于 time_slot_id 自增
 create sequence time_slot_id_seq start with 1 increment by 1;
@@ -82,6 +104,11 @@ begin
 end;
 /
 
+
+
+
+
+
 -- 创建 SEQUENCE 用于 appointment_id 自增
 create sequence appointment_id_seq start with 1 increment by 1;
 
@@ -93,6 +120,11 @@ begin
    :new.appointment_id := appointment_id_seq.nextval;
 end;
 /
+
+
+
+
+
 
 -- 创建 SEQUENCE 用于 violation_id 自增
 create sequence violation_id_seq start with 1 increment by 1;
@@ -106,6 +138,12 @@ begin
 end;
 /
 
+
+
+
+
+
+
 -- 创建 SEQUENCE 用于 venue_id 自增
 create sequence venue_id_seq start with 1 increment by 1;
 
@@ -117,6 +155,32 @@ begin
    :new.venue_id := venue_id_seq.nextval;
 end;
 /
+-- 创建触发器，在插入时自动将其与所有timeslot关联
+create or replace trigger trg_venue_after_insert after
+   insert on venue
+   for each row
+begin
+   insert into venue_time_slot (
+      time_slot_id,
+      venue_id,
+      actual_number,
+      time_slot_status
+   )
+      select t.time_slot_id,
+             :new.venue_id,
+             0,
+             'available'
+        from time_slot t;
+end;
+/
+
+
+
+
+
+
+
+
 
 -- 创建 SEQUENCE 用于 change_id 自增
 create sequence point_change_id_seq start with 1 increment by 1;
@@ -130,6 +194,14 @@ begin
 end;
 /
 
+
+
+
+
+
+
+
+
 -- 创建 SEQUENCE 用于 maintenance_id 自增
 create sequence maintenance_id_seq start with 1 increment by 1;
 
@@ -141,6 +213,12 @@ begin
    :new.maintenance_id := maintenance_id_seq.nextval;
 end;
 /
+
+
+
+
+
+
 
 -- 创建 SEQUENCE 用于 bill_id 自增
 create sequence bill_id_seq start with 1 increment by 1;
@@ -154,6 +232,13 @@ begin
 end;
 /
 
+
+
+
+
+
+
+
 -- 创建 SEQUENCE 用于 notification_id 自增
 create sequence notification_id_seq start with 1 increment by 1;
 
@@ -163,5 +248,16 @@ create or replace trigger trg_notification_id before
    for each row
 begin
    :new.notification_id := notification_id_seq.nextval;
+end;
+/
+
+--自动调整notification创建时间
+create or replace trigger set_notification_time before
+   insert on notification
+   for each row
+begin
+   if :new.createtime is null then
+      :new.createtime := sysdate;
+   end if;
 end;
 /

@@ -86,5 +86,83 @@ namespace Sports_reservation_backend.Controllers
                 });
             }
         }
+
+        //订单详情页
+        [Authorize]
+        [HttpGet("{appointmentId}")]
+        public async Task<IActionResult> GetAppointmentDetail(int appointmentId)
+        {
+            try
+            {
+                // 1. 查询 Appointment
+                var appointment = await _db.AppointmentSet
+                    .AsNoTracking()
+                    .FirstOrDefaultAsync(a => a.AppointmentId == appointmentId);
+
+                if (appointment == null)
+                    return Ok(new { success = false, message = "预约不存在" });
+
+                // 2. 查询 VenueAppointment + Venue
+                var venueInfo = await (from va in _db.VenueAppointmentSet
+                                       join v in _db.VenueSet on va.VenueId equals v.VenueId
+                                       where va.AppointmentId == appointmentId
+                                       select new
+                                       {
+                                           venue_id = v.VenueId,
+                                           venue_name = v.VenueName,
+                                           venue_subname = v.VenueSubname,
+                                           venue_type = v.VenueType,
+                                           venue_location = v.VenueLocation,
+                                           venue_capacity = v.VenueCapacity,
+                                           venue_status = v.VenueStatus,
+                                           venue_picture_url = v.VenuePictureUrl
+                                       }).FirstOrDefaultAsync();
+
+                // 3. 查询 Bill
+                var billInfo = await _db.BillSet
+                    .Where(b => b.AppointmentId == appointmentId)
+                    .Select(b => new
+                    {
+                        bill_id = b.BillId,
+                        bill_status = b.BillStatus,
+                        bill_amount = b.BillAmount,
+                        begin_time = b.BeginTime
+                    }).FirstOrDefaultAsync();
+
+                // 4. 查询 User
+                var userAppointment = await _db.UserAppointmentSet
+                    .Where(ua => ua.AppointmentId == appointmentId)
+                    .Select(ua => ua.User)
+                    .FirstOrDefaultAsync();
+
+                var userInfo = userAppointment != null ? new
+                {
+                    user_id = userAppointment.UserId,
+                    user_name = userAppointment.UserName
+                } : null;
+
+                // 5. 返回
+                return Ok(new
+                {
+                    appointment = new
+                    {
+                        appointment_id = appointment.AppointmentId,
+                        appointment_status = appointment.AppointmentStatus,
+                        apply_time = appointment.ApplyTime,
+                        begin_time = appointment.BeginTime,
+                        end_time = appointment.EndTime
+                    },
+                    venue = venueInfo,
+                    bill = billInfo,
+                    user = userInfo
+                });
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "获取预约详情失败，appointmentId: {AppointmentId}", appointmentId);
+                return Ok(new { success = false, message = "获取预约详情失败" });
+            }
+        }
+
     }
 }
