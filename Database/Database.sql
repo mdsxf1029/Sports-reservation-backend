@@ -222,25 +222,23 @@ create table user_violation (
 );
 
 /*用户（管理员）-举报：帖子举报审核表*/
-create table manager_post_report (
-   manager_id    number
-      references "USER" ( user_id ),
-   report_id     number
-      references post_report ( report_id ),
-   manage_time   date,
-   manage_reason clob,
-   primary key ( report_id )
+create table post_report_handling (
+      handle_id       number,
+      manager_id      number references "USER" ( user_id ),
+      report_id       number references post_report ( report_id ),
+      manage_time     date,
+      manage_reason   clob,
+      primary key ( handle_id )
 );
 
 /*用户（管理员）-举报：评论举报审核表*/
-create table manager_comment_report (
-   manager_id    number
-      references "USER" ( user_id ),
-   report_id     number
-      references comment_report ( report_id ),
-   manage_time   date,
-   manage_reason clob,
-   primary key ( report_id )
+create table comment_report_handling (
+     handle_id       number,
+     manager_id      number references "USER" ( user_id ),
+     report_id       number references comment_report ( report_id ),
+     manage_time     date,
+     manage_reason   clob,
+     primary key ( handle_id )
 );
 
 /*用户-用户（普通用户-管理员）：黑名单表*/

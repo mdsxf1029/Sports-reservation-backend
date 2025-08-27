@@ -25,26 +25,51 @@ public class PostReportController(OracleDbContext context) : ControllerBase
         {
             var totalCount = await context.PostReportSet.CountAsync();
             
-            var reports = await context.PostReportSet
-                .OrderBy(r => r.ReportId)
-                .Select(pr => new {
-                    pr.ReportId,
-                    pr.ReporterId,
-                    pr.ReportedUserId,
-                    pr.ReportedPostId,
-                    pr.ReportReason,
-                    pr.ReportTime,
-                    pr.ReportStatus
-                })
-                .Skip((page - 1) * pageSize)
-                .Take(pageSize)
-                .ToListAsync();
+            var reports = await (from pr in context.PostReportSet
+                                join reporterUser in context.UserSet on pr.ReporterId equals reporterUser.UserId
+                                join reportedUser in context.UserSet on pr.ReportedUserId equals reportedUser.UserId
+                                join reportedPost in context.PostSet on pr.ReportedPostId equals reportedPost.PostId
+                                orderby pr.ReportId descending
+                                select new
+                                {
+                                    reportId = pr.ReportId,
+                                    reporterId = pr.ReporterId,
+                                    reportedUserId = pr.ReportedUserId,
+                                    reportedPostId = pr.ReportedPostId,
+                                    reportReason = pr.ReportReason,
+                                    reportTime = pr.ReportTime,
+                                    reportStatus = pr.ReportStatus,
+                                    reporter = new 
+                                    {
+                                        userId = reporterUser.UserId,
+                                        username = reporterUser.UserName,
+                                        points = reporterUser.Points,
+                                        avatarUrl = reporterUser.AvatarUrl,
+                                        gender = reporterUser.Gender,
+                                        profile = reporterUser.Profile,
+                                        region = reporterUser.Region,
+                                    },
+                                    reportedUser = new
+                                    {
+                                        userId = reportedUser.UserId,
+                                        username = reportedUser.UserName,
+                                        points = reportedUser.Points,
+                                        avatarUrl = reportedUser.AvatarUrl,
+                                        gender = reportedUser.Gender,
+                                        profile = reportedUser.Profile,
+                                        region = reportedUser.Region,
+                                    },
+                                    reportedPost
+                                })
+                                .Skip((page - 1) * pageSize)
+                                .Take(pageSize)
+                                .ToListAsync();
             
             return Ok(new
             {
                 page, pageSize, totalCount,
                 totalPages = (int)Math.Ceiling(totalCount / (double)pageSize),
-                data = reports
+                list = reports
             });
         }
         catch (Exception ex)
@@ -270,6 +295,199 @@ public class PostReportController(OracleDbContext context) : ControllerBase
         }
     }
 
+    [HttpGet("checking")]
+    [SwaggerOperation(Summary = "获取所有待处理的举报", Description = "获取所有待处理（pending）状态的举报数据")]
+    public async Task<ActionResult<object>> GetPendingReports([FromQuery] int page = 1, [FromQuery] int pageSize = 10)
+    {
+        page = page < 1 ? 1 : page;
+        pageSize = pageSize < 1 ? 10 : pageSize;
+        try
+        {
+            var query = context.PostReportSet.Where(r => r.ReportStatus == "checking");
+            var totalCount = await query.CountAsync();
+            
+            var reports = await (from pr in query
+                                join reporterUser in context.UserSet on pr.ReporterId equals reporterUser.UserId
+                                join reportedUser in context.UserSet on pr.ReportedUserId equals reportedUser.UserId
+                                join reportedPost in context.PostSet on pr.ReportedPostId equals reportedPost.PostId
+                                orderby pr.ReportId descending
+                                select new
+                                {
+                                    reportId = pr.ReportId,
+                                    reporterId = pr.ReporterId,
+                                    reportedUserId = pr.ReportedUserId,
+                                    reportedPostId = pr.ReportedPostId,
+                                    reportReason = pr.ReportReason,
+                                    reportTime = pr.ReportTime,
+                                    reportStatus = pr.ReportStatus,
+                                    reporter = new 
+                                    {
+                                        userId = reporterUser.UserId,
+                                        username = reporterUser.UserName,
+                                        points = reporterUser.Points,
+                                        avatarUrl = reporterUser.AvatarUrl,
+                                        gender = reporterUser.Gender,
+                                        profile = reporterUser.Profile,
+                                        region = reporterUser.Region,
+                                    },
+                                    reportedUser = new
+                                    {
+                                        userId = reportedUser.UserId,
+                                        username = reportedUser.UserName,
+                                        points = reportedUser.Points,
+                                        avatarUrl = reportedUser.AvatarUrl,
+                                        gender = reportedUser.Gender,
+                                        profile = reportedUser.Profile,
+                                        region = reportedUser.Region,
+                                    },
+                                    reportedPost
+                                })
+                                .Skip((page - 1) * pageSize)
+                                .Take(pageSize)
+                                .ToListAsync();
+            
+            return Ok(new
+            {
+                page, pageSize, totalCount,
+                totalPages = (int)Math.Ceiling(totalCount / (double)pageSize),
+                data = reports
+            });
+        }
+        catch (Exception ex)
+        {
+            return StatusCode(500, $"Internal server error: {ex.Message}");
+        }
+    }
+    
+    [HttpGet("accepted")]
+    [SwaggerOperation(Summary = "获取所有已接受的举报", Description = "获取所有已接受（accepted）状态的举报数据")]
+    public async Task<ActionResult<object>> GetAcceptedReports([FromQuery] int page = 1, [FromQuery] int pageSize = 10)
+    {
+        page = page < 1 ? 1 : page;
+        pageSize = pageSize < 1 ? 10 : pageSize;
+        try
+        {
+            var query = context.PostReportSet.Where(r => r.ReportStatus == "accepted");
+            var totalCount = await query.CountAsync();
+
+            var reports = await (from pr in query
+                                join reporterUser in context.UserSet on pr.ReporterId equals reporterUser.UserId
+                                join reportedUser in context.UserSet on pr.ReportedUserId equals reportedUser.UserId
+                                join reportedPost in context.PostSet on pr.ReportedPostId equals reportedPost.PostId
+                                orderby pr.ReportId descending
+                                select new
+                                {
+                                    reportId = pr.ReportId,
+                                    reporterId = pr.ReporterId,
+                                    reportedUserId = pr.ReportedUserId,
+                                    reportedPostId = pr.ReportedPostId,
+                                    reportReason = pr.ReportReason,
+                                    reportTime = pr.ReportTime,
+                                    reportStatus = pr.ReportStatus,
+                                    reporter = new 
+                                    {
+                                        userId = reporterUser.UserId,
+                                        username = reporterUser.UserName,
+                                        points = reporterUser.Points,
+                                        avatarUrl = reporterUser.AvatarUrl,
+                                        gender = reporterUser.Gender,
+                                        profile = reporterUser.Profile,
+                                        region = reporterUser.Region,
+                                    },
+                                    reportedUser = new
+                                    {
+                                        userId = reportedUser.UserId,
+                                        username = reportedUser.UserName,
+                                        points = reportedUser.Points,
+                                        avatarUrl = reportedUser.AvatarUrl,
+                                        gender = reportedUser.Gender,
+                                        profile = reportedUser.Profile,
+                                        region = reportedUser.Region,
+                                    },
+                                    reportedPost
+                                })
+                                .Skip((page - 1) * pageSize)
+                                .Take(pageSize)
+                                .ToListAsync();
+            
+            return Ok(new
+            {
+                page, pageSize, totalCount,
+                totalPages = (int)Math.Ceiling(totalCount / (double)pageSize),
+                data = reports
+            });
+        }
+        catch (Exception ex)
+        {
+            return StatusCode(500, $"Internal server error: {ex.Message}");
+        }
+    }
+
+    // 获取所有已拒绝（rejected）的举报
+    [HttpGet("rejected")]
+    [SwaggerOperation(Summary = "获取所有已拒绝的举报", Description = "获取所有已拒绝（rejected）状态的举报数据")]
+    public async Task<ActionResult<object>> GetRejectedReports([FromQuery] int page = 1, [FromQuery] int pageSize = 10)
+    {
+        page = page < 1 ? 1 : page;
+        pageSize = pageSize < 1 ? 10 : pageSize;
+        try
+        {
+            var query = context.PostReportSet.Where(r => r.ReportStatus == "rejected");
+            var totalCount = await query.CountAsync();
+            
+           var reports = await (from pr in query
+                                join reporterUser in context.UserSet on pr.ReporterId equals reporterUser.UserId
+                                join reportedUser in context.UserSet on pr.ReportedUserId equals reportedUser.UserId
+                                join reportedPost in context.PostSet on pr.ReportedPostId equals reportedPost.PostId
+                                orderby pr.ReportId descending
+                                select new
+                                {
+                                    reportId = pr.ReportId,
+                                    reporterId = pr.ReporterId,
+                                    reportedUserId = pr.ReportedUserId,
+                                    reportedPostId = pr.ReportedPostId,
+                                    reportReason = pr.ReportReason,
+                                    reportTime = pr.ReportTime,
+                                    reportStatus = pr.ReportStatus,
+                                    reporter = new 
+                                    {
+                                        userId = reporterUser.UserId,
+                                        username = reporterUser.UserName,
+                                        points = reporterUser.Points,
+                                        avatarUrl = reporterUser.AvatarUrl,
+                                        gender = reporterUser.Gender,
+                                        profile = reporterUser.Profile,
+                                        region = reporterUser.Region,
+                                    },
+                                    reportedUser = new
+                                    {
+                                        userId = reportedUser.UserId,
+                                        username = reportedUser.UserName,
+                                        points = reportedUser.Points,
+                                        avatarUrl = reportedUser.AvatarUrl,
+                                        gender = reportedUser.Gender,
+                                        profile = reportedUser.Profile,
+                                        region = reportedUser.Region,
+                                    },
+                                    reportedPost
+                                })
+                                .Skip((page - 1) * pageSize)
+                                .Take(pageSize)
+                                .ToListAsync();
+            
+            return Ok(new
+            {
+                page, pageSize, totalCount,
+                totalPages = (int)Math.Ceiling(totalCount / (double)pageSize),
+                data = reports
+            });
+        }
+        catch (Exception ex)
+        {
+            return StatusCode(500, $"Internal server error: {ex.Message}");
+        }
+    }
+    
     [HttpPost("{postId:int}-{userId:int}")]
     [SwaggerOperation(Summary = "添加举报表信息", Description = "添加举报表信息")]
     public async Task<IActionResult> AddReport(int postId, int userId, [FromBody] PostReport report)
@@ -346,8 +564,8 @@ public class PostReportController(OracleDbContext context) : ControllerBase
 
             if (report.ReportStatus != "checking")
             {
-                var managerReport = context.ManagerPostReportSet.Where(mpr => mpr.ReportId == reportId);
-                context.ManagerPostReportSet.RemoveRange(managerReport);
+                var managerReport = context.PostReportHandlingSet.Where(mpr => mpr.ReportId == reportId);
+                context.PostReportHandlingSet.RemoveRange(managerReport);
             }
             
             context.PostReportSet.Remove(report);
@@ -440,9 +658,8 @@ public class PostReportController(OracleDbContext context) : ControllerBase
             report.ReportStatus = request.Result;
             
             context.PostReportSet.Update(report);
-            await context.SaveChangesAsync();
 
-            var managerReport = new ManagerPostReport
+            var managerReport = new PostReportHandling
             {
                 ReportId = reportId,
                 ManagerId = user.UserId,
@@ -450,7 +667,8 @@ public class PostReportController(OracleDbContext context) : ControllerBase
                 ManageReason = request.Reason,
             };
             
-            context.ManagerPostReportSet.Add(managerReport);
+            context.PostReportHandlingSet.Add(managerReport);
+            
             await context.SaveChangesAsync();
             
             return Ok($"Data with ID: {reportId} has been updated successfully.");

@@ -17,8 +17,8 @@ public class OracleDbContext(DbContextOptions<OracleDbContext> options) : DbCont
     public DbSet<CommentReply> CommentReplySet { get; set; }
     public DbSet<CommentReport> CommentReportSet { get; set; }
     public DbSet<Maintenance> MaintenanceSet { get; set; }
-    public DbSet<ManagerCommentReport> ManagerCommentReportSet { get; set; }
-    public DbSet<ManagerPostReport> ManagerPostReportSet { get; set; }
+    public DbSet<PostReportHandling> PostReportHandlingSet { get; set; }
+    public DbSet<CommentReportHandling> CommentReportHandlingSet { get; set; }
     public DbSet<Notification> NotificationSet { get; set; }
     public DbSet<PointChange> PointChangeSet { get; set; }
     public DbSet<Post> PostSet { get; set; }

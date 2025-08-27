@@ -5,15 +5,19 @@ using Swashbuckle.AspNetCore.Annotations;
 
 namespace Sports_reservation_backend.Models.TableModels;
 
-[Table("MANAGER_POST_REPORT")]
+[Table("COMMENT_REPORT_HANDLING")]
 [SwaggerSchema(Description = "帖子举报审核表")]
-public class ManagerPostReport
+public class CommentReportHandling
 {
+    [Key]
+    [Column("HANDLE_ID")]
+    [SwaggerSchema("处理ID")]
+    public int? HandleId { get; set; }
+    
     [Column("MANAGER_ID")]
     [SwaggerSchema("管理员ID")]
     public int? ManagerId { get; set; }
-
-    [Key]
+    
     [Column("REPORT_ID")]
     [SwaggerSchema("举报ID")]
     public int ReportId { get; set; }
@@ -30,5 +34,5 @@ public class ManagerPostReport
     public User? Manager { get; set; }
 
     [ForeignKey(nameof(ReportId))]
-    public PostReport? PostReport { get; set; }
+    public CommentReport? CommentReport { get; set; }
 }
