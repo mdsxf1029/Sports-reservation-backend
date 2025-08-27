@@ -317,21 +317,55 @@ public class PostController(OracleDbContext context) : ControllerBase
                 })
                 .FirstOrDefaultAsync();
             
-            return Ok(new
+            var userIdStr = User.FindFirst("userId")?.Value;
+            if (string.IsNullOrEmpty(userIdStr) || !int.TryParse(userIdStr, out int userId))
             {
-                postId = post.PostId,
-                title = post.PostTitle,
-                content = post.PostContent,
-                publishTime = post.PostTime,
-                author = user,
-                stats = new
+                return Ok(new
                 {
-                    commentCount = post.CommentCount,
-                    collectionCount = post.CollectionCount,
-                    likeCount = post.LikeCount,
-                    dislikeCount = post.DislikeCount,
-                }
-            });
+                    postId = post.PostId,
+                    title = post.PostTitle,
+                    content = post.PostContent,
+                    publishTime = post.PostTime,
+                    author = user,
+                    stats = new
+                    {
+                        commentCount = post.CommentCount,
+                        collectionCount = post.CollectionCount,
+                        likeCount = post.LikeCount,
+                        dislikeCount = post.DislikeCount,
+                    },
+                    currentUserInteraction = new
+                    {
+                        hasLiked = false,
+                        hasDisliked = false,
+                        hasCollected = false
+                    }
+                });
+            }
+            else
+            {
+                return Ok(new
+                {
+                    postId = post.PostId,
+                    title = post.PostTitle,
+                    content = post.PostContent,
+                    publishTime = post.PostTime,
+                    author = user,
+                    stats = new
+                    {
+                        commentCount = post.CommentCount,
+                        collectionCount = post.CollectionCount,
+                        likeCount = post.LikeCount,
+                        dislikeCount = post.DislikeCount,
+                    },
+                    currentUserInteraction = new
+                    {
+                        hasLiked = await context.PostLikeSet.AnyAsync(pl => (pl.PostId == id && pl.UserId == userId)),
+                        hasDisliked = await context.PostDislikeSet.AnyAsync(pl => (pl.PostId == id && pl.UserId == userId)),
+                        hasCollected = await context.PostCollectionSet.AnyAsync(pl => (pl.PostId == id && pl.UserId == userId)),
+                    }
+                });
+            }
         }
         catch (Exception ex)
         {
