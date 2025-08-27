@@ -111,12 +111,7 @@ public class PostCollectionController(OracleDbContext context) : ControllerBase
                                    .Skip((page - 1) * pageSize)
                                    .Take(pageSize)
                                    .ToListAsync();
-
-            if (posts.Count == 0)
-            {
-                return NotFound($"No corresponding data found for ID: {userId}");
-            }
-
+            
             return Ok(new
             {
                 page, pageSize, totalCount,
