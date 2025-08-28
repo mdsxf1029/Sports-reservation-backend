@@ -463,10 +463,6 @@ public class CommentController(OracleDbContext context) : ControllerBase
         {
             return BadRequest(ModelState);
         }
-        if (id != comment.CommentId)
-        {
-            return BadRequest("ID mismatch");
-        }
         
         var existingComment = await context.CommentSet.FindAsync(id);
 

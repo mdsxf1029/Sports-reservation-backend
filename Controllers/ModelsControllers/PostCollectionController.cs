@@ -180,9 +180,9 @@ public class PostCollectionController(OracleDbContext context) : ControllerBase
             context.PostCollectionSet.Remove(collection);
 
             var post = await context.PostSet.FindAsync(postId);
-            if (post != null && post.LikeCount > 0)
+            if (post != null && post.CollectionCount > 0)
             {
-                post.LikeCount--;
+                post.CollectionCount--;
             }
             
             await context.SaveChangesAsync();

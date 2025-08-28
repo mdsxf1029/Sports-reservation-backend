@@ -560,10 +560,6 @@ public class PostController(OracleDbContext context) : ControllerBase
         {
             return BadRequest(ModelState);
         }
-        if (id != post.PostId)
-        {
-            return BadRequest("ID mismatch");
-        }
         
         var existingPost = await context.PostSet.FindAsync(id);
         if (existingPost == null)
