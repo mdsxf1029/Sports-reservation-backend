@@ -17,21 +17,21 @@ public class News
     [Column("NEWS_CATEGORY")]
     [SwaggerSchema(Description = "新闻类别")]
     [StringLength(64)]
-    public string NewsCategory { get; set; } = string.Empty;
+    public string? NewsCategory { get; set; } = string.Empty;
     
     [Column("NEWS_TITLE")]
     [SwaggerSchema(Description = "新闻标题")]
     [StringLength(128)]
-    public string NewsTitle { get; set; } = string.Empty;
+    public string? NewsTitle { get; set; } = string.Empty;
     
     [Column("NEWS_CONTENT", TypeName = "clob")]
     [SwaggerSchema(Description = "新闻内容")]
-    public string NewsContent { get; set; } = string.Empty;
+    public string? NewsContent { get; set; } = string.Empty;
 
     [Column("NEWS_STATUS")]
     [StringLength(64)]
     [SwaggerSchema(Description = "新闻状态")]
-    public string NewsStatus { get; set; } = string.Empty;
+    public string? NewsStatus { get; set; } = string.Empty;
 
     [Column("NEWS_TIME", TypeName = "date")]
     [SwaggerSchema(Description = "新闻发布时间")]
@@ -40,5 +40,5 @@ public class News
     [Column("COVER_URL")]
     [SwaggerSchema(Description = "封面图片URL")]
     [StringLength(256)]
-    public string CoverUrl { get; set; } = string.Empty;
+    public string? CoverUrl { get; set; } = string.Empty;
 }
