@@ -25,7 +25,6 @@ public class News
     public string NewsTitle { get; set; } = string.Empty;
     
     [Column("NEWS_CONTENT", TypeName = "clob")]
-    [Required]
     [SwaggerSchema(Description = "新闻内容")]
     public string NewsContent { get; set; } = string.Empty;
 
@@ -35,7 +34,6 @@ public class News
     public string NewsStatus { get; set; } = string.Empty;
 
     [Column("NEWS_TIME", TypeName = "date")]
-    [Required]
     [SwaggerSchema(Description = "新闻发布时间")]
     public DateTime NewsTime { get; set; }
 
