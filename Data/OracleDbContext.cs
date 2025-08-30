@@ -38,6 +38,7 @@ public class OracleDbContext(DbContextOptions<OracleDbContext> options) : DbCont
     public DbSet<VenueManager> VenueManagerSet { get; set; }
     public DbSet<VenueTimeSlot> VenueTimeSlotSet { get; set; }
     public DbSet<Violation> ViolationSet { get; set; }
+    public DbSet<News> NewsSet { get; set; }
 
     // 重写 OnModelCreating 方法
     protected override void OnModelCreating(ModelBuilder modelBuilder)

@@ -435,7 +435,7 @@ public class PostReportController(OracleDbContext context) : ControllerBase
             var query = context.PostReportSet.Where(r => r.ReportStatus == "rejected");
             var totalCount = await query.CountAsync();
             
-           var reports = await (from pr in query
+            var reports = await (from pr in query
                                 join reporterUser in context.UserSet on pr.ReporterId equals reporterUser.UserId
                                 join reportedUser in context.UserSet on pr.ReportedUserId equals reportedUser.UserId
                                 join reportedPost in context.PostSet on pr.ReportedPostId equals reportedPost.PostId
@@ -487,6 +487,8 @@ public class PostReportController(OracleDbContext context) : ControllerBase
             return StatusCode(500, $"Internal server error: {ex.Message}");
         }
     }
+    
+    
     
     [HttpPost("{postId:int}-{userId:int}")]
     [SwaggerOperation(Summary = "添加举报表信息", Description = "添加举报表信息")]
