@@ -111,11 +111,11 @@ namespace Sports_reservation_backend.Controllers
         }
 
         /// <summary>
-        /// 检查时间段是否被锁定，如果未锁定则锁定
-        /// POST /api/courtreservation/check-and-lock
+        /// 检查时间段是否被占用
+        /// POST /api/courtreservation/check
         /// </summary>
-        [HttpPost("check-and-lock")]
-        public async Task<IActionResult> CheckAndLock([FromBody] CheckAndLockRequest request)
+        [HttpPost("check")]
+        public async Task<IActionResult> Check([FromBody] CheckAndLockRequest request)
         {
             try
             {
@@ -157,37 +157,36 @@ namespace Sports_reservation_backend.Controllers
                     });
                 }
 
-                // 已经被锁定
+                // 已经被占用
                 if (vts.TimeSlotStatus == "busy")
                 {
                     return Ok(new
                     {
                         success = false,
-                        message = "已被锁定"
+                        message = "已被占用"
                     });
                 }
 
-                // 执行锁定
-                vts.TimeSlotStatus = "busy";
-                await _db.SaveChangesAsync();
-
+                // 可用
                 return Ok(new
                 {
-                    success = true
+                    success = true,
+                    message = "可用"
                 });
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "锁定场地时间段失败，VenueId: {VenueId}, TimeSlotId: {TimeSlotId}, Date: {Date}",
+                _logger.LogError(ex, "检查场地时间段失败，VenueId: {VenueId}, TimeSlotId: {TimeSlotId}, Date: {Date}",
                     request.VenueId, request.TimeSlotId, request.Date);
 
                 return Ok(new
                 {
                     success = false,
-                    message = "锁定失败"
+                    message = "检查失败"
                 });
             }
         }
+
 
         [Authorize]
         [HttpPost("confirm-booking")]
