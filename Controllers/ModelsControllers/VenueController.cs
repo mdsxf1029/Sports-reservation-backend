@@ -94,7 +94,7 @@ namespace Sports_reservation_backend.Controllers
                 id = v.VenueId,
                 name = v.VenueName,
                 address = v.VenueLocation,
-                hours = "08:00-21:00",
+                hours = v.OpeningHours,
                 campus = v.VenueLocation.Contains("四平") ? "四平校区" : "嘉定校区",
                 type = v.VenueType,
                 image = v.VenuePictureUrl
@@ -142,7 +142,7 @@ namespace Sports_reservation_backend.Controllers
                     id = venue.VenueId,
                     name = venue.VenueName,
                     address = venue.VenueLocation,
-                    hours = "09:00 - 21:00", // 先写死，后面可改成数据库字段
+                    hours = venue.OpeningHours,
                     image = venue.VenuePictureUrl
                 };
 

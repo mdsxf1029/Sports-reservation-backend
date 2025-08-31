@@ -51,4 +51,24 @@ public class Venue
     [StringLength(20)]
     [SwaggerSchema("发布状态，open或close")]
     public string? VenueStatus { get; set; }
+
+    // 新增字段
+    [Column("OPENING_HOURS")]
+    [StringLength(50)]
+    [SwaggerSchema("开放时间段")]
+    public string? OpeningHours { get; set; }
+
+    [Column("BOOKING_HOURS")]
+    [StringLength(50)]
+    [SwaggerSchema("提供预约服务时间段")]
+    public string? BookingHours { get; set; }
+
+    [Column("PRICE")]
+    [SwaggerSchema("单价")]
+    public decimal? Price { get; set; }
+
+    [Column("PRICE_UNIT")]
+    [StringLength(20)]
+    [SwaggerSchema("单价对应时间单位，如小时")]
+    public string? PriceUnit { get; set; }
 }
