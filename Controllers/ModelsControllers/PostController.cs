@@ -1,4 +1,5 @@
-﻿using Microsoft.AspNetCore.Http.HttpResults;
+﻿using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Http.HttpResults;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Sports_reservation_backend.Data;
@@ -27,18 +28,114 @@ public class PostController(OracleDbContext context) : ControllerBase
         {
             var totalCount = await context.PostSet.CountAsync();
             
-            var posts = await context.PostSet
-                .OrderByDescending(p => p.PostId)
-                .Skip((page - 1) * pageSize)
-                .Take(pageSize)
-                .ToListAsync();
-            
-            return Ok(new
-            {
-                page, pageSize, totalCount,
-                totalPages = (int)Math.Ceiling(totalCount / (double)pageSize),
-                data = posts
-            });
+            var userIdStr = User.FindFirst("userId")?.Value;
+            if (string.IsNullOrEmpty(userIdStr) || !int.TryParse(userIdStr, out int userId))
+            { 
+                var posts = await (from post in context.PostSet
+                                          // 关联作者
+                                          join userPost in context.UserPostSet on post.PostId equals userPost.PostId
+                                          join user in context.UserSet on userPost.UserId equals user.UserId
+                                          // 按照postId降序排列
+                                          orderby post.PostId descending
+                                          select new
+                                          {
+                                              postId = post.PostId,
+                                              content = post.PostContent,
+                                              title = post.PostTitle,
+                                              postTime = post.PostTime,
+                                              postStatus = post.PostStatus,
+                                              stats = new 
+                                              {
+                                                  commentCount = post.CommentCount,  
+                                                  collectionCount = post.CollectionCount, 
+                                                  likeCount = post.LikeCount, 
+                                                  dislikeCount = post.DislikeCount  
+                                              },
+                                              author = new
+                                              {
+                                                  userId = user.UserId,
+                                                  username = user.UserName, 
+                                                  points = user.Points,  
+                                                  avatarUrl = user.AvatarUrl,  
+                                                  gender = user.Gender,  
+                                                  profile = user.Profile,  
+                                                  region = user.Region 
+                                              },
+                                              currentUserInteraction = new
+                                              {
+                                                  hasLiked = false,
+                                                  hasDisliked = false,
+                                                  hasCollected = false
+                                              }
+                                          })
+                                          .Skip((page - 1) * pageSize)
+                                          .Take(pageSize)
+                                          .ToListAsync();
+                return Ok(new
+                {
+                    page, pageSize, totalCount,
+                    totalPages = (int)Math.Ceiling(totalCount / (double)pageSize),
+                    list = posts
+                });
+            }
+            else
+            { 
+                var posts = await (from post in context.PostSet
+                                          // 关联作者
+                                          join userPost in context.UserPostSet on post.PostId equals userPost.PostId
+                                          join user in context.UserSet on userPost.UserId equals user.UserId
+                                          // 关联当前用户是否喜爱
+                                          join like in context.PostLikeSet.Where(l => l.UserId == userId) on post.PostId equals like.PostId into likeGroup
+                                          from userLike in likeGroup.DefaultIfEmpty()
+                                          // 关联当前用户是否点踩
+                                          join dislike in context.PostDislikeSet.Where(d => d.UserId == userId) on post.PostId equals dislike.PostId into dislikeGroup
+                                          from userDislike in dislikeGroup.DefaultIfEmpty()
+                                          // 关联当前用户是否收藏
+                                          join collection in context.PostCollectionSet.Where(c => c.UserId == userId) on post.PostId equals collection.PostId into collectionGroup
+                                          from userCollection in collectionGroup.DefaultIfEmpty()
+                                          // 按照postId降序排列
+                                          orderby post.PostId descending
+                                          select new
+                                          {
+                                              postId = post.PostId,
+                                              content = post.PostContent,
+                                              title = post.PostTitle,
+                                              postTime = post.PostTime,
+                                              postStatus = post.PostStatus,
+                                              stats = new 
+                                              {
+                                                  commentCount = post.CommentCount,  
+                                                  collectionCount = post.CollectionCount, 
+                                                  likeCount = post.LikeCount, 
+                                                  dislikeCount = post.DislikeCount  
+                                              },
+                                              author = new
+                                              {
+                                                  userId = user.UserId,
+                                                  username = user.UserName, 
+                                                  points = user.Points,  
+                                                  avatarUrl = user.AvatarUrl,  
+                                                  gender = user.Gender,  
+                                                  profile = user.Profile,  
+                                                  region = user.Region 
+                                              },
+                                              currentUserInteraction = new
+                                              {
+                                                  hasLiked = userLike != null,
+                                                  hasDisliked = userDislike != null,
+                                                  hasCollected = userCollection != null
+                                              }
+                                          })
+                                          .Skip((page - 1) * pageSize)
+                                          .Take(pageSize)
+                                          .ToListAsync();
+                return Ok(new
+                {
+                    page, pageSize, totalCount,
+                    totalPages = (int)Math.Ceiling(totalCount / (double)pageSize),
+                    list = posts
+                });
+            }
         }
         catch (DbUpdateException dbEx)
         {
@@ -49,7 +146,7 @@ public class PostController(OracleDbContext context) : ControllerBase
             return StatusCode(500, $"Internal server error: {ex.Message}");
         }
     }
-
+    
     [HttpGet("public")]
     [SwaggerOperation(Summary = "获取所有公开的帖子", Description = "获取所有公开的帖子")]
     [SwaggerResponse(200,"获取数据成功")]
@@ -64,46 +161,116 @@ public class PostController(OracleDbContext context) : ControllerBase
         {
             var totalCount = await context.PostSet.Where(post => post.PostStatus == "public").CountAsync();
             
-            var publicPosts = await (from post in context.PostSet
-                                  join userPost in context.UserPostSet on post.PostId equals userPost.PostId
-                                  join user in context.UserSet on userPost.UserId equals user.UserId
-                                  where post.PostStatus == "public"
-                                  orderby post.PostId descending
-                                  select new
-                                  {
-                                      postId = post.PostId,
-                                      content = post.PostContent,
-                                      title = post.PostTitle,
-                                      postTime = post.PostTime,
-                                      postStatus = post.PostStatus,
-                                      stats = new 
-                                      {
-                                          commentCount = post.CommentCount,  
-                                          collectionCount = post.CollectionCount, 
-                                          likeCount = post.LikeCount, 
-                                          dislikeCount = post.DislikeCount  
-                                      },
-                                      author = new
-                                      {
-                                          userId = user.UserId,
-                                          username = user.UserName, 
-                                          points = user.Points,  
-                                          avatarUrl = user.AvatarUrl,  
-                                          gender = user.Gender,  
-                                          profile = user.Profile,  
-                                          region = user.Region 
-                                      }
-                                  })
-                                  .Skip((page - 1) * pageSize)
-                                  .Take(pageSize)
-                                  .ToListAsync();
-            
-            return Ok(new
+            var userIdStr = User.FindFirst("userId")?.Value;
+            if (string.IsNullOrEmpty(userIdStr) || !int.TryParse(userIdStr, out int userId))
             {
-                page, pageSize, totalCount,
-                totalPages = (int)Math.Ceiling(totalCount / (double)pageSize),
-                list = publicPosts
-            });
+                var publicPosts = await (from post in context.PostSet
+                                              where post.PostStatus == "public"
+                                              // 关联作者
+                                              join userPost in context.UserPostSet on post.PostId equals userPost.PostId
+                                              join user in context.UserSet on userPost.UserId equals user.UserId
+                                              // 按照postId降序排列
+                                              orderby post.PostId descending
+                                              select new
+                                              {
+                                                  postId = post.PostId,
+                                                  content = post.PostContent,
+                                                  title = post.PostTitle,
+                                                  postTime = post.PostTime,
+                                                  postStatus = post.PostStatus,
+                                                  stats = new 
+                                                  {
+                                                      commentCount = post.CommentCount,  
+                                                      collectionCount = post.CollectionCount, 
+                                                      likeCount = post.LikeCount, 
+                                                      dislikeCount = post.DislikeCount  
+                                                  },
+                                                  author = new
+                                                  {
+                                                      userId = user.UserId,
+                                                      username = user.UserName, 
+                                                      points = user.Points,  
+                                                      avatarUrl = user.AvatarUrl,  
+                                                      gender = user.Gender,  
+                                                      profile = user.Profile,  
+                                                      region = user.Region 
+                                                  },
+                                                  currentUserInteraction = new
+                                                  {
+                                                      hasLiked = false,
+                                                      hasDisliked = false,
+                                                      hasCollected = false
+                                                  }
+                                              })
+                                              .Skip((page - 1) * pageSize)
+                                              .Take(pageSize)
+                                              .ToListAsync();
+                   return Ok(new
+                   {
+                       page, pageSize, totalCount,
+                       totalPages = (int)Math.Ceiling(totalCount / (double)pageSize),
+                       list = publicPosts
+                   });
+            }
+            else
+            {
+                var publicPosts = await (from post in context.PostSet
+                                              where post.PostStatus == "public"
+                                              // 关联作者
+                                              join userPost in context.UserPostSet on post.PostId equals userPost.PostId
+                                              join user in context.UserSet on userPost.UserId equals user.UserId
+                                              // 关联当前用户是否喜爱
+                                              join like in context.PostLikeSet.Where(l => l.UserId == userId) on post.PostId equals like.PostId into likeGroup
+                                              from userLike in likeGroup.DefaultIfEmpty()
+                                              // 关联当前用户是否点踩
+                                              join dislike in context.PostDislikeSet.Where(d => d.UserId == userId) on post.PostId equals dislike.PostId into dislikeGroup
+                                              from userDislike in dislikeGroup.DefaultIfEmpty()
+                                              // 关联当前用户是否收藏
+                                              join collection in context.PostCollectionSet.Where(c => c.UserId == userId) on post.PostId equals collection.PostId into collectionGroup
+                                              from userCollection in collectionGroup.DefaultIfEmpty()
+                                              // 按照postId降序排列
+                                              orderby post.PostId descending
+                                              select new
+                                              {
+                                                  postId = post.PostId,
+                                                  content = post.PostContent,
+                                                  title = post.PostTitle,
+                                                  postTime = post.PostTime,
+                                                  postStatus = post.PostStatus,
+                                                  stats = new 
+                                                  {
+                                                      commentCount = post.CommentCount,  
+                                                      collectionCount = post.CollectionCount, 
+                                                      likeCount = post.LikeCount, 
+                                                      dislikeCount = post.DislikeCount  
+                                                  },
+                                                  author = new
+                                                  {
+                                                      userId = user.UserId,
+                                                      username = user.UserName, 
+                                                      points = user.Points,  
+                                                      avatarUrl = user.AvatarUrl,  
+                                                      gender = user.Gender,  
+                                                      profile = user.Profile,  
+                                                      region = user.Region 
+                                                  },
+                                                  currentUserInteraction = new
+                                                  {
+                                                      hasLiked = userLike != null,
+                                                      hasDisliked = userDislike != null,
+                                                      hasCollected = userCollection != null
+                                                  }
+                                              })
+                                              .Skip((page - 1) * pageSize)
+                                              .Take(pageSize)
+                                              .ToListAsync();
+                return Ok(new
+                {
+                    page, pageSize, totalCount,
+                    totalPages = (int)Math.Ceiling(totalCount / (double)pageSize),
+                    list = publicPosts
+                });
+            }
         }
         catch (DbUpdateException dbEx)
         {
@@ -150,21 +317,55 @@ public class PostController(OracleDbContext context) : ControllerBase
                 })
                 .FirstOrDefaultAsync();
             
-            return Ok(new
+            var userIdStr = User.FindFirst("userId")?.Value;
+            if (string.IsNullOrEmpty(userIdStr) || !int.TryParse(userIdStr, out int userId))
             {
-                postId = post.PostId,
-                title = post.PostTitle,
-                content = post.PostContent,
-                publishTime = post.PostTime,
-                author = user,
-                stats = new
+                return Ok(new
                 {
-                    commentCount = post.CommentCount,
-                    collectionCount = post.CollectionCount,
-                    likeCount = post.LikeCount,
-                    dislikeCount = post.DislikeCount,
-                }
-            });
+                    postId = post.PostId,
+                    title = post.PostTitle,
+                    content = post.PostContent,
+                    publishTime = post.PostTime,
+                    author = user,
+                    stats = new
+                    {
+                        commentCount = post.CommentCount,
+                        collectionCount = post.CollectionCount,
+                        likeCount = post.LikeCount,
+                        dislikeCount = post.DislikeCount,
+                    },
+                    currentUserInteraction = new
+                    {
+                        hasLiked = false,
+                        hasDisliked = false,
+                        hasCollected = false
+                    }
+                });
+            }
+            else
+            {
+                return Ok(new
+                {
+                    postId = post.PostId,
+                    title = post.PostTitle,
+                    content = post.PostContent,
+                    publishTime = post.PostTime,
+                    author = user,
+                    stats = new
+                    {
+                        commentCount = post.CommentCount,
+                        collectionCount = post.CollectionCount,
+                        likeCount = post.LikeCount,
+                        dislikeCount = post.DislikeCount,
+                    },
+                    currentUserInteraction = new
+                    {
+                        hasLiked = await context.PostLikeSet.AnyAsync(pl => (pl.PostId == id && pl.UserId == userId)),
+                        hasDisliked = await context.PostDislikeSet.AnyAsync(pl => (pl.PostId == id && pl.UserId == userId)),
+                        hasCollected = await context.PostCollectionSet.AnyAsync(pl => (pl.PostId == id && pl.UserId == userId)),
+                    }
+                });
+            }
         }
         catch (Exception ex)
         {
@@ -358,10 +559,6 @@ public class PostController(OracleDbContext context) : ControllerBase
         if (!ModelState.IsValid)
         {
             return BadRequest(ModelState);
-        }
-        if (id != post.PostId)
-        {
-            return BadRequest("ID mismatch");
         }
         
         var existingPost = await context.PostSet.FindAsync(id);

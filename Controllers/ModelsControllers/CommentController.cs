@@ -141,33 +141,71 @@ public class CommentController(OracleDbContext context) : ControllerBase
     {
         try
         {
-            var comments = await (from pc in context.PostCommentSet
-                    join c in context.CommentSet on pc.CommentId equals c.CommentId
-                    join uc in context.UserCommentSet on c.CommentId equals uc.CommentId
-                    join u in context.UserSet on uc.UserId equals u.UserId
-                    where pc.PostId == postId
-                    orderby pc.CommentId descending
-                    select new 
-                    {
-                        commentId = c.CommentId,
-                        content = c.CommentContent,
-                        publishTime = c.CommentTime,
-                        author = new {
-                            userId = u.UserId,
-                            username = u.UserName,
-                            avatar = u.AvatarUrl
-                        },
-                        likeCount = c.LikeCount,
-                        dislikeCount = c.DislikeCount,
-                    })
-                    .ToListAsync();
-
-            if (comments.Count == 0)
+            var userIdStr = User.FindFirst("userId")?.Value;
+            if (string.IsNullOrEmpty(userIdStr) || !int.TryParse(userIdStr, out int userId))
             {
-                return NotFound($"No replies found for PostId: {postId}");
+                var comments = await (from pc in context.PostCommentSet
+                        join c in context.CommentSet on pc.CommentId equals c.CommentId
+                        join uc in context.UserCommentSet on c.CommentId equals uc.CommentId
+                        join u in context.UserSet on uc.UserId equals u.UserId
+                        where pc.PostId == postId
+                        orderby pc.CommentId descending
+                        select new
+                        {
+                            commentId = c.CommentId,
+                            content = c.CommentContent,
+                            publishTime = c.CommentTime,
+                            author = new
+                            {
+                                userId = u.UserId,
+                                username = u.UserName,
+                                avatar = u.AvatarUrl
+                            },
+                            likeCount = c.LikeCount,
+                            dislikeCount = c.DislikeCount,
+                            isLiked = false,
+                            isDisliked = false
+                        })
+                        .ToListAsync();
+                
+                return Ok(new { comments });
             }
-            
-            return Ok(new { comments });
+            else
+            {
+                var comments = await (from pc in context.PostCommentSet
+                        // 和评论做连接
+                        join c in context.CommentSet on pc.CommentId equals c.CommentId
+                        // 和用户左连接
+                        join uc in context.UserCommentSet on c.CommentId equals uc.CommentId
+                        join u in context.UserSet on uc.UserId equals u.UserId
+                        where pc.PostId == postId
+                        // 和用户点踩做连接
+                        join like in context.CommentLikeSet.Where(l => l.UserId == userId) on c.CommentId equals like.CommentId into likeGroup
+                        from userLike in likeGroup.DefaultIfEmpty()
+                        // 和用户点踩做连接
+                        join dislike in context.CommentDislikeSet.Where(d => d.UserId == userId) on c.CommentId equals dislike.CommentId into dislikeGroup
+                        from userDislike in dislikeGroup.DefaultIfEmpty()
+                        orderby pc.CommentId descending
+                        select new
+                        {
+                            commentId = c.CommentId,
+                            content = c.CommentContent,
+                            publishTime = c.CommentTime,
+                            author = new
+                            {
+                                userId = u.UserId,
+                                username = u.UserName,
+                                avatar = u.AvatarUrl
+                            },
+                            likeCount = c.LikeCount,
+                            dislikeCount = c.DislikeCount,
+                            isLiked = userLike != null,
+                            isDisliked = userDislike != null
+                        })
+                        .ToListAsync();
+
+                return Ok(new { comments });
+            }
         }
         catch (Exception ex)
         {
@@ -424,10 +462,6 @@ public class CommentController(OracleDbContext context) : ControllerBase
         if (!ModelState.IsValid)
         {
             return BadRequest(ModelState);
-        }
-        if (id != comment.CommentId)
-        {
-            return BadRequest("ID mismatch");
         }
         
         var existingComment = await context.CommentSet.FindAsync(id);
