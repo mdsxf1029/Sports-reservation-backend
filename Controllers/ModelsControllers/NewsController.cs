@@ -47,12 +47,20 @@ public class NewsController(OracleDbContext context, IWebHostEnvironment env) : 
             
             query = query.Where(n => (n.NewsStatus == "published" || n.NewsStatus == "updated"));
 
+            var totalCount = await query.CountAsync();
+            
             var news = await query
+                .OrderByDescending(n => n.NewsTime)
                 .Skip((page - 1) * pageSize)
                 .Take(pageSize)
                 .ToListAsync();
             
-            return Ok(news);
+            return Ok(new
+            {
+                page, pageSize, totalCount,
+                totalPages = (int)Math.Ceiling(totalCount / (double)pageSize),
+                list = news
+            });
         }
         catch (Exception ex)
         {
@@ -77,13 +85,21 @@ public class NewsController(OracleDbContext context, IWebHostEnvironment env) : 
             {
                 query = query.Where(n => n.NewsCategory == category);
             }
+            
+            var totalCount = await query.CountAsync();
 
             var news = await query
+                .OrderByDescending(n => n.NewsTime)
                 .Skip((page - 1) * pageSize)
                 .Take(pageSize)
                 .ToListAsync();
             
-            return Ok(news);
+            return Ok(new
+            {
+                page, pageSize, totalCount,
+                totalPages = (int)Math.Ceiling(totalCount / (double)pageSize),
+                list = news
+            });
         }
         catch (Exception ex)
         {
@@ -93,7 +109,7 @@ public class NewsController(OracleDbContext context, IWebHostEnvironment env) : 
 
     [HttpGet("status/{status}")]
     public async Task<ActionResult<IEnumerable<News>>> GetNewsByStatus(
-        string status, [FromQuery] int page = 1, [FromQuery] int pageSize = 10)
+        string status, [FromQuery] string category = "", [FromQuery] int page = 1, [FromQuery] int pageSize = 10)
     {
         if(page < 1) page = 1;
         
@@ -108,12 +124,25 @@ public class NewsController(OracleDbContext context, IWebHostEnvironment env) : 
                 query = query.Where(n => n.NewsStatus == status);
             }
             
+            if (!string.IsNullOrEmpty(category))
+            {
+                query = query.Where(n => n.NewsCategory == category);
+            }
+            
+            var totalCount = await query.CountAsync();
+            
             var news = await query
+                .OrderByDescending(n => n.NewsTime)
                 .Skip((page - 1) * pageSize)
                 .Take(pageSize)
                 .ToListAsync();
             
-            return Ok(news);
+            return Ok(new
+            {
+                page, pageSize, totalCount,
+                totalPages = (int)Math.Ceiling(totalCount / (double)pageSize),
+                list = news
+            });
         }
         catch (Exception ex)
         {

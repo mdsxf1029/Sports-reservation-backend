@@ -202,72 +202,76 @@ namespace Sports_reservation_backend.Controllers
             using var transaction = await _db.Database.BeginTransactionAsync();
             try
             {
-                foreach (var item in request.Appointments)
+                // 假设每次 confirm-booking 只会创建一个预约
+                var item = request.Appointments.FirstOrDefault();
+
+                // 1. 查询 TimeSlot
+                var timeslot = await _db.TimeSlotSet.FirstOrDefaultAsync(ts => ts.TimeSlotId == item.TimeSlotId);
+                if (timeslot == null)
+                    return Ok(new { success = false, message = $"时间段 {item.TimeSlotId} 无效" });
+
+                // 2. 查询 VenueTimeSlot
+                var vts = await _db.VenueTimeSlotSet
+                    .FirstOrDefaultAsync(v => v.VenueId == item.VenueId && v.TimeSlotId == item.TimeSlotId);
+
+                if (vts == null)
+                    return Ok(new { success = false, message = $"场地 {item.VenueId} 无效" });
+
+                if (vts.TimeSlotStatus == "busy")
+                    return Ok(new { success = false, message = $"场地 {item.VenueId} 时间段 {item.TimeSlotId} 已被锁定" });
+
+                // 3. 计算预约开始/结束时间
+                var date = DateTime.Parse(item.Date).Date;
+                var beginDateTime = date + timeslot.BeginTime!.Value.TimeOfDay;
+                var endDateTime = date + timeslot.EndTime!.Value.TimeOfDay;
+
+                // 4. 创建 Appointment
+                var appointment = new Appointment
                 {
-                    // 1. 查询 TimeSlot
-                    var timeslot = await _db.TimeSlotSet.FirstOrDefaultAsync(ts => ts.TimeSlotId == item.TimeSlotId);
-                    if (timeslot == null)
-                        return Ok(new { success = false, message = $"时间段 {item.TimeSlotId} 无效" });
+                    ApplyTime = DateTime.Now,
+                    FinishTime = null,
+                    BeginTime = beginDateTime,
+                    EndTime = endDateTime,
+                    AppointmentStatus = item.Status
+                };
+                _db.AppointmentSet.Add(appointment);
+                await _db.SaveChangesAsync(); // 获取 AppointmentId
 
-                    // 2. 查询 VenueTimeSlot
-                    var vts = await _db.VenueTimeSlotSet
-                        .FirstOrDefaultAsync(v => v.VenueId == item.VenueId && v.TimeSlotId == item.TimeSlotId);
+                // 5. 更新 VenueTimeSlot 状态
+                vts.TimeSlotStatus = "busy";
 
-                    if (vts == null)
-                        return Ok(new { success = false, message = $"场地 {item.VenueId} 无效" });
+                // 6. 创建 UserAppointment
+                _db.UserAppointmentSet.Add(new UserAppointment
+                {
+                    AppointmentId = appointment.AppointmentId,
+                    UserId = userId
+                });
 
-                    if (vts.TimeSlotStatus == "busy")
-                        return Ok(new { success = false, message = $"场地 {item.VenueId} 时间段 {item.TimeSlotId} 已被锁定" });
+                // 7. 创建 VenueAppointment
+                _db.VenueAppointmentSet.Add(new VenueAppointment
+                {
+                    AppointmentId = appointment.AppointmentId,
+                    VenueId = item.VenueId
+                });
 
-                    // 3. 计算预约开始/结束时间
-                    var date = DateTime.Parse(item.Date).Date;
-                    var beginDateTime = date + timeslot.BeginTime!.Value.TimeOfDay;
-                    var endDateTime = date + timeslot.EndTime!.Value.TimeOfDay;
-
-                    // 4. 创建 Appointment
-                    var appointment = new Appointment
-                    {
-                        ApplyTime = DateTime.Now,
-                        FinishTime = null,
-                        BeginTime = beginDateTime,
-                        EndTime = endDateTime,
-                        AppointmentStatus = item.Status
-                    };
-                    _db.AppointmentSet.Add(appointment);
-                    await _db.SaveChangesAsync(); // 获取 AppointmentId
-
-                    // 5. 更新 VenueTimeSlot 状态
-                    vts.TimeSlotStatus = "busy";
-
-                    // 6. 创建 UserAppointment
-                    _db.UserAppointmentSet.Add(new UserAppointment
-                    {
-                        AppointmentId = appointment.AppointmentId,
-                        UserId = userId
-                    });
-
-                    // 7. 创建 VenueAppointment
-                    _db.VenueAppointmentSet.Add(new VenueAppointment
-                    {
-                        AppointmentId = appointment.AppointmentId,
-                        VenueId = item.VenueId
-                    });
-
-                    // 8. 创建 Bill（默认 pending，金额可自定义）
-                    _db.BillSet.Add(new Bill
-                    {
-                        AppointmentId = appointment.AppointmentId,
-                        UserId = userId,
-                        BillStatus = "pending",
-                        BillAmount = 1, // 可根据场地/时段价格计算
-                        BeginTime = DateTime.Now
-                    });
-                }
+                // 8. 创建 Bill（默认 pending，金额可自定义）
+                _db.BillSet.Add(new Bill
+                {
+                    AppointmentId = appointment.AppointmentId,
+                    UserId = userId,
+                    BillStatus = "pending",
+                    BillAmount = 1, // 可根据场地/时段价格计算
+                    BeginTime = DateTime.Now
+                });
 
                 await _db.SaveChangesAsync();
                 await transaction.CommitAsync();
 
-                return Ok(new { success = true });
+                return Ok(new
+                {
+                    success = true,
+                    appointment_id = appointment.AppointmentId // 返回当前创建的预约ID
+                });
             }
             catch (Exception ex)
             {
@@ -276,6 +280,7 @@ namespace Sports_reservation_backend.Controllers
                 return Ok(new { success = false, message = "预约失败，请稍后重试" });
             }
         }
+
 
 
     }
