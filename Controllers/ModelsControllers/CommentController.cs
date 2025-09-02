@@ -433,6 +433,15 @@ public class CommentController(OracleDbContext context) : ControllerBase
         // 删除当前评论的所有回复
         context.CommentReplySet.RemoveRange(replies);
 
+        // 删除当前评论的所有举报
+        var commentReports = context.CommentReportSet.Where(cp => cp.ReportedCommentId == parentId);
+        foreach (var commentReport in commentReports)
+        {
+            var reportHandling = context.CommentReportHandlingSet.Where(rh => rh.ReportId == commentReport.ReportId);
+            context.CommentReportHandlingSet.RemoveRange(reportHandling);
+        }
+        context.CommentReportSet.RemoveRange(commentReports);
+        
         // 删除与当前评论及其所有子回复相关的点赞、踩和用户评论记录
         var commentLikes = context.CommentLikeSet.Where(cl => cl.CommentId == parentId);
         context.CommentLikeSet.RemoveRange(commentLikes);

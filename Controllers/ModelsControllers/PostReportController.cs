@@ -296,14 +296,21 @@ public class PostReportController(OracleDbContext context) : ControllerBase
     }
 
     [HttpGet("checking")]
-    [SwaggerOperation(Summary = "获取所有待处理的举报", Description = "获取所有待处理（pending）状态的举报数据")]
-    public async Task<ActionResult<object>> GetPendingReports([FromQuery] int page = 1, [FromQuery] int pageSize = 10)
+    [SwaggerOperation(Summary = "获取所有待处理的举报", Description = "获取所有待处理（checking）状态的举报数据")]
+    public async Task<ActionResult<object>> GetCheckingReports(
+        [FromQuery] int page = 1, [FromQuery] int pageSize = 10, [FromQuery] string? keyword = null)
     {
         page = page < 1 ? 1 : page;
         pageSize = pageSize < 1 ? 10 : pageSize;
         try
         {
             var query = context.PostReportSet.Where(r => r.ReportStatus == "checking");
+            
+            if (!string.IsNullOrEmpty(keyword))
+            {
+                query = query.Where(r => r.ReportReason.Contains(keyword));
+            }
+            
             var totalCount = await query.CountAsync();
             
             var reports = await (from pr in query
@@ -350,7 +357,7 @@ public class PostReportController(OracleDbContext context) : ControllerBase
             {
                 page, pageSize, totalCount,
                 totalPages = (int)Math.Ceiling(totalCount / (double)pageSize),
-                data = reports
+                list = reports
             });
         }
         catch (Exception ex)
@@ -361,13 +368,20 @@ public class PostReportController(OracleDbContext context) : ControllerBase
     
     [HttpGet("accepted")]
     [SwaggerOperation(Summary = "获取所有已接受的举报", Description = "获取所有已接受（accepted）状态的举报数据")]
-    public async Task<ActionResult<object>> GetAcceptedReports([FromQuery] int page = 1, [FromQuery] int pageSize = 10)
+    public async Task<ActionResult<object>> GetAcceptedReports(
+        [FromQuery] int page = 1, [FromQuery] int pageSize = 10, [FromQuery] string? keyword = null)
     {
         page = page < 1 ? 1 : page;
         pageSize = pageSize < 1 ? 10 : pageSize;
         try
         {
             var query = context.PostReportSet.Where(r => r.ReportStatus == "accepted");
+            
+            if (!string.IsNullOrEmpty(keyword))
+            {
+                query = query.Where(r => r.ReportReason.Contains(keyword));
+            }
+            
             var totalCount = await query.CountAsync();
 
             var reports = await (from pr in query
@@ -414,7 +428,7 @@ public class PostReportController(OracleDbContext context) : ControllerBase
             {
                 page, pageSize, totalCount,
                 totalPages = (int)Math.Ceiling(totalCount / (double)pageSize),
-                data = reports
+                list = reports
             });
         }
         catch (Exception ex)
@@ -426,13 +440,20 @@ public class PostReportController(OracleDbContext context) : ControllerBase
     // 获取所有已拒绝（rejected）的举报
     [HttpGet("rejected")]
     [SwaggerOperation(Summary = "获取所有已拒绝的举报", Description = "获取所有已拒绝（rejected）状态的举报数据")]
-    public async Task<ActionResult<object>> GetRejectedReports([FromQuery] int page = 1, [FromQuery] int pageSize = 10)
+    public async Task<ActionResult<object>> GetRejectedReports(
+        [FromQuery] int page = 1, [FromQuery] int pageSize = 10, [FromQuery] string? keyword = null)
     {
         page = page < 1 ? 1 : page;
         pageSize = pageSize < 1 ? 10 : pageSize;
         try
         {
             var query = context.PostReportSet.Where(r => r.ReportStatus == "rejected");
+            
+            if (!string.IsNullOrEmpty(keyword))
+            {
+                query = query.Where(r => r.ReportReason.Contains(keyword));
+            }
+            
             var totalCount = await query.CountAsync();
             
             var reports = await (from pr in query
@@ -479,7 +500,7 @@ public class PostReportController(OracleDbContext context) : ControllerBase
             {
                 page, pageSize, totalCount,
                 totalPages = (int)Math.Ceiling(totalCount / (double)pageSize),
-                data = reports
+                list = reports
             });
         }
         catch (Exception ex)
@@ -487,8 +508,6 @@ public class PostReportController(OracleDbContext context) : ControllerBase
             return StatusCode(500, $"Internal server error: {ex.Message}");
         }
     }
-    
-    
     
     [HttpPost("{postId:int}-{userId:int}")]
     [SwaggerOperation(Summary = "添加举报表信息", Description = "添加举报表信息")]

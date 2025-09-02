@@ -475,11 +475,22 @@ public class PostController(OracleDbContext context) : ControllerBase
             }
             
             var postComments = context.PostCommentSet.Where(pc => pc.PostId == id);
+            // 删除与该帖子相关的评论数据
+            context.PostCommentSet.RemoveRange(postComments);
             // 递归删除与该帖子的评论及其回复
             foreach (var postComment in postComments)
             {
                 await DeleteCommentRecursive(postComment.CommentId);
             }
+            
+            // 删除帖子举报信息
+            var postReports = context.PostReportSet.Where(pr => pr.ReportedPostId == id);
+            foreach (var postReport in postReports)
+            {
+                var reportHandling = context.PostReportHandlingSet.Where(rh => rh.ReportId == postReport.ReportId);
+                context.PostReportHandlingSet.RemoveRange(reportHandling);
+            }
+            context.PostReportSet.RemoveRange(postReports);
             
             // 查找与该帖子相关的用户帖子数据
             var userPost = context.UserPostSet.Where(up => up.PostId == id);
@@ -496,9 +507,6 @@ public class PostController(OracleDbContext context) : ControllerBase
             // 查找与该帖子相关的踩的数据
             var postDislikes = context.PostDislikeSet.Where(pd => pd.PostId == id);
             context.PostDislikeSet.RemoveRange(postDislikes);
-            
-            // 删除与该帖子相关的评论数据
-            context.PostCommentSet.RemoveRange(postComments);
             
             context.PostSet.Remove(post);
             
@@ -530,6 +538,15 @@ public class PostController(OracleDbContext context) : ControllerBase
         // 删除当前评论的所有回复
         context.CommentReplySet.RemoveRange(replies);
 
+        // 删除当前评论的所有举报
+        var commentReports = context.CommentReportSet.Where(cp => cp.ReportedCommentId == commentId);
+        foreach (var commentReport in commentReports)
+        {
+            var reportHandling = context.CommentReportHandlingSet.Where(rh => rh.ReportId == commentReport.ReportId);
+            context.CommentReportHandlingSet.RemoveRange(reportHandling);
+        }
+        context.CommentReportSet.RemoveRange(commentReports);
+        
         // 删除与当前评论（和它的所有子回复）相关的点赞、踩和用户评论记录
         var commentLikes = context.CommentLikeSet.Where(cl => cl.CommentId == commentId);
         context.CommentLikeSet.RemoveRange(commentLikes);
