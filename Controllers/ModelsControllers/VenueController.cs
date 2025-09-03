@@ -176,35 +176,47 @@ namespace Sports_reservation_backend.Controllers
                     .Where(vts => vts.VenueId == id && vts.TimeSlot != null && vts.TimeSlot.BeginTime.HasValue)
                     .ToListAsync();
 
-                if (!venueTimeSlots.Any())
-                {
-                    return Ok(new
-                    {
-                        code = 404,
-                        msg = "该场馆未设置时间段",
-                        data = new List<object>()
-                    });
-                }
+                // 获取今天和未来6天的日期（共7天）
+                var startDate = DateTime.Today;
+                var endDate = startDate.AddDays(6);
 
-                // 按日期分组
-                var groupedByDate = venueTimeSlots
-                    .GroupBy(vts => vts.TimeSlot!.BeginTime!.Value.Date)
-                    .OrderBy(g => g.Key);
+                // 创建7天的日期范围
+                var dateRange = Enumerable.Range(0, 7)
+                    .Select(offset => startDate.AddDays(offset))
+                    .ToList();
 
                 var result = new List<object>();
 
-                foreach (var group in groupedByDate)
+                foreach (var date in dateRange)
                 {
-                    var date = group.Key;
-                    // 判断当天是否有可预约时间段
-                    var hasAvailable = group.Any(vts => vts.TimeSlotStatus != "busy");
+                    // 查找该日期的时间段
+                    var dateSlots = venueTimeSlots
+                        .Where(vts => vts.TimeSlot!.BeginTime!.Value.Date == date)
+                        .ToList();
 
-                    result.Add(new
+                    // 判断当天是否有时间段数据
+                    if (!dateSlots.Any())
                     {
-                        weekday = GetChineseWeekday(date.DayOfWeek),
-                        date = date.ToString("MM-dd"),
-                        status = hasAvailable ? "可预约" : "已订满"
-                    });
+                        // 如果没有设置时间段，显示"未设置"
+                        result.Add(new
+                        {
+                            weekday = GetChineseWeekday(date.DayOfWeek),
+                            date = date.ToString("MM-dd"),
+                            status = "未设置"
+                        });
+                    }
+                    else
+                    {
+                        // 判断当天是否有可预约时间段
+                        var hasAvailable = dateSlots.Any(vts => vts.TimeSlotStatus != "busy");
+
+                        result.Add(new
+                        {
+                            weekday = GetChineseWeekday(date.DayOfWeek),
+                            date = date.ToString("MM-dd"),
+                            status = hasAvailable ? "可预约" : "已订满"
+                        });
+                    }
                 }
 
                 return Ok(new
