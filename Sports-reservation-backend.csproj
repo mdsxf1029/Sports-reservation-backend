@@ -19,6 +19,8 @@
 
   <ItemGroup>
     <Folder Include="wwwroot\uploads\" />
+    <Folder Include="wwwroot\uploads\avatar\" />
+    <Folder Include="wwwroot\uploads\news_cover\" />
   </ItemGroup>
 
   <ItemGroup>
