@@ -9,7 +9,7 @@ public class OracleDbContext(DbContextOptions<OracleDbContext> options) : DbCont
     // 配置数据库上下文实体集
     public DbSet<Appointment> AppointmentSet { get; set; }
     public DbSet<Bill> BillSet { get; set; }
-    public DbSet<BlackList> BlackListSet { get; set; }
+    public DbSet<Blacklist> BlacklistSet { get; set; }
     public DbSet<CheckIn> CheckInSet { get; set; }
     public DbSet<Comment> CommentSet { get; set; }
     public DbSet<CommentDislike> CommentDislikeSet { get; set; }

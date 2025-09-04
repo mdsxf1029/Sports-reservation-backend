@@ -53,28 +53,37 @@ public class UploadController : ControllerBase
             });
         }
 
-        // 保存文件
+        // 生成唯一文件名
         var fileName = $"{Guid.NewGuid()}{ext}";
-        var savePath = Path.Combine(_env.WebRootPath, "uploads", "avatar");
-        if (!Directory.Exists(savePath)) Directory.CreateDirectory(savePath);
+
+        // 获取 WebRootPath，如果为空则使用当前目录
+        var webRoot = _env.WebRootPath ?? Directory.GetCurrentDirectory();
+
+        // 拼接上传目录路径
+        var savePath = Path.Combine(webRoot, "uploads", "avatar");
+
+        // 确保目录存在
+        Directory.CreateDirectory(savePath);
+
+        // 拼接完整文件路径
         var filePath = Path.Combine(savePath, fileName);
 
+        // 保存文件
         using (var stream = new FileStream(filePath, FileMode.Create))
         {
             await avatar.CopyToAsync(stream);
         }
 
+        // 构建访问 URL
         var avatarUrl = $"{Request.Scheme}://{Request.Host}/uploads/avatar/{fileName}";
 
+        // 处理 Token 更新用户头像
         var authHeader = Request.Headers["Authorization"].ToString();
-        Console.WriteLine($"AuthHeader: {authHeader}");
         string token = null;
         if (!string.IsNullOrEmpty(authHeader) && authHeader.StartsWith("Bearer "))
         {
             token = authHeader.Substring("Bearer ".Length).Trim();
         }
-        Console.WriteLine($"Token: {token}");
-
 
         if (!string.IsNullOrEmpty(token))
         {
@@ -92,9 +101,9 @@ public class UploadController : ControllerBase
                     }
                 }
             }
-            if (principal == null)
+            else
             {
-                Console.WriteLine("Token 验证失败，可能在注册时候进行头像的上传。");
+                Console.WriteLine("Token 验证失败，可能在注册时候进行头像上传。");
             }
         }
 
@@ -105,4 +114,5 @@ public class UploadController : ControllerBase
             data = new { avatarUrl }
         });
     }
+
 }

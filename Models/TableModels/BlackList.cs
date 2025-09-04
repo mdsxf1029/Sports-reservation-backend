@@ -7,7 +7,7 @@ namespace Sports_reservation_backend.Models.TableModels;
 
 [Table("BLACKLIST")]
 [SwaggerSchema(Description = "黑名单表（普通用户-管理员）")]
-public class BlackList
+public class Blacklist
 {
     [Key]
     [Column("USER_ID")]
