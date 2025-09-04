@@ -109,8 +109,8 @@ create table violation (
 /*场地*/
 create table venue (
    venue_id          number primary key, -- 场地id
-   venue_subname     varchar(20) not null, -- 小场地名称
-   venue_picture_url varchar(255) not null, --场馆图片
+   venue_subname     varchar(100) not null, -- 小场地名称
+   venue_picture_url varchar(255), --场馆图片
    venue_name        varchar(100) not null, -- 场馆名称
    venue_type        varchar(20) not null, -- 场地类型
    venue_location    varchar(100) not null, -- 场地地址

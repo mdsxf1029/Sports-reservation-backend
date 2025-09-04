@@ -21,4 +21,5 @@ RUN echo "Executing the PUBLISH stage!"
 FROM base AS final
 WORKDIR /app
 COPY --from=publish /app/publish .
+RUN mkdir -p wwwroot/uploads && chmod 777 wwwroot/uploads
 ENTRYPOINT ["dotnet", "Sports-reservation-backend.dll"]
