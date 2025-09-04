@@ -3,6 +3,7 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Sports_reservation_backend.Data;
 using Sports_reservation_backend.Models.TableModels;
+using Sports_reservation_backend.Models.RequestModels;
 
 namespace Sports_reservation_backend.Controllers
 {
@@ -163,6 +164,116 @@ namespace Sports_reservation_backend.Controllers
                 return Ok(new { success = false, message = "获取预约详情失败" });
             }
         }
+
+        [Authorize]
+        [HttpPost("check-in")]
+        public async Task<IActionResult> CheckIn([FromBody] CheckInRequest request)
+        {
+            try
+            {
+                int appointmentId = request.AppointmentId;
+
+                // 1. 查找预约
+                var appointment = await _db.AppointmentSet.FindAsync(appointmentId);
+                if (appointment == null)
+                {
+                    return Ok(new { success = false, message = "预约不存在" });
+                }
+
+                // 2. 检查状态
+                if (appointment.AppointmentStatus != "upcoming")
+                {
+                    return Ok(new { success = false, message = "预约不存在或状态不允许签到" });
+                }
+
+                // 3. 找到预约对应的用户
+                var userAppointment = await _db.UserAppointmentSet
+                    .FirstOrDefaultAsync(ua => ua.AppointmentId == appointmentId);
+                if (userAppointment == null)
+                {
+                    return Ok(new { success = false, message = "未找到预约用户" });
+                }
+
+                var user = await _db.UserSet.FindAsync(userAppointment.UserId);
+                if (user == null)
+                {
+                    return Ok(new { success = false, message = "用户不存在" });
+                }
+
+                // 4. 修改预约状态
+                appointment.AppointmentStatus = "completed";
+
+                // 5. 修改用户积分
+                user.Points += 10;
+
+                // 6. 新增积分变更记录
+                var pointChange = new PointChange
+                {
+                    UserId = user.UserId,
+                    ChangeAmount = 10,
+                    ChangeTime = DateTime.Now,
+                    ChangeReason = "签到成功"
+                };
+                _db.PointChangeSet.Add(pointChange);
+
+                // 7. 保存事务
+                await _db.SaveChangesAsync();
+
+                return Ok(new { success = true, message = "签到成功，积分+10" });
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "签到失败");
+                return Ok(new { success = false, message = "服务器错误，签到失败" });
+            }
+        }
+
+        [HttpPut("{appointmentId}/cancel")]
+        public async Task<IActionResult> CancelAppointment(int appointmentId, [FromBody] CancelAppointmentRequest request)
+        {
+            try
+            {
+                // 1. 检查 URL 和 body 的 appointmentId 是否一致
+                if (appointmentId != request.AppointmentId)
+                {
+                    return BadRequest(new { success = false, message = "参数不一致" });
+                }
+
+                // 2. 查找预约
+                var appointment = await _db.AppointmentSet.FindAsync(appointmentId);
+                if (appointment == null)
+                {
+                    return Ok(new { success = false, message = "预约不存在" });
+                }
+
+                // 3. 验证预约和用户是否关联
+                var userAppointment = await _db.UserAppointmentSet
+                    .FirstOrDefaultAsync(ua => ua.AppointmentId == appointmentId && ua.UserId == request.UserId);
+
+                if (userAppointment == null)
+                {
+                    return Ok(new { success = false, message = "该用户没有此预约" });
+                }
+
+                // 4. 检查当前状态是否允许取消
+                if (appointment.AppointmentStatus != "upcoming")
+                {
+                    return Ok(new { success = false, message = "该预约当前状态不允许取消" });
+                }
+
+                // 5. 修改状态
+                appointment.AppointmentStatus = "canceled";
+                await _db.SaveChangesAsync();
+
+                return Ok(new { success = true, message = "预约已被成功取消" });
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "取消预约失败");
+                return Ok(new { success = false, message = "服务器错误，取消失败" });
+            }
+        }
+
 
     }
 }
