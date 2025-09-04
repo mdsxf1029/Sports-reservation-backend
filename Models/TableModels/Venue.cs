@@ -19,11 +19,10 @@ public class Venue
     [SwaggerSchema("小场地名称")]
     public string VenueSubname { get; set; } = null!;
 
-    [Required]
     [Column("VENUE_PICTURE_URL")]
     [StringLength(255)]
     [SwaggerSchema("场地图片")]
-    public string VenuePictureUrl { get; set; } = null!;
+    public string? VenuePictureUrl { get; set; }
 
     [Required]
     [Column("VENUE_NAME")]
@@ -52,7 +51,6 @@ public class Venue
     [SwaggerSchema("发布状态，open或close")]
     public string? VenueStatus { get; set; }
 
-    // 新增字段
     [Column("OPENING_HOURS")]
     [StringLength(50)]
     [SwaggerSchema("开放时间段")]
