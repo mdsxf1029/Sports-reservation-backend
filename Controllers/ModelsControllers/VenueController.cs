@@ -301,7 +301,9 @@ namespace Sports_reservation_backend.Controllers
                     price_unit = v.PriceUnit,
                     location = v.VenueLocation,
                     maxOccupancy = v.VenueCapacity,
-                    status = v.VenueStatus == "开放" ? "开放" : "关闭",
+                    status = v.VenueStatus,
+                    subname = v.VenueSubname,
+                    pictureurl = v.VenuePictureUrl,
                     openingHours = v.OpeningHours,
                     bookingHours = v.BookingHours
                 });
