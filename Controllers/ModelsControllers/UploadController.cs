@@ -114,5 +114,50 @@ public class UploadController : ControllerBase
             data = new { avatarUrl }
         });
     }
+    [HttpPost("venue-image")]
+    [Consumes("multipart/form-data")]
+    public async Task<IActionResult> UploadVenueImage([FromForm] UploadVenueImageRequest request)
+    {
+        var file = request.File;
+
+        if (file == null || file.Length == 0)
+        {
+            return BadRequest(new { code = 1, msg = "未选择文件" });
+        }
+
+        // 校验扩展名
+        var allowedExtensions = new[] { ".jpg", ".png" };
+        var ext = Path.GetExtension(file.FileName).ToLower();
+        if (!allowedExtensions.Contains(ext))
+        {
+            return BadRequest(new
+            {
+                code = 1,
+                msg = "文件格式不支持，请上传.jpg或.png格式图片"
+            });
+        }
+
+        // 生成文件名
+        var fileName = $"{Guid.NewGuid()}{ext}";
+        var webRoot = _env.WebRootPath ?? Directory.GetCurrentDirectory();
+        var savePath = Path.Combine(webRoot, "uploads", "venue");
+        Directory.CreateDirectory(savePath);
+
+        var filePath = Path.Combine(savePath, fileName);
+        using (var stream = new FileStream(filePath, FileMode.Create))
+        {
+            await file.CopyToAsync(stream);
+        }
+
+        var url = $"{Request.Scheme}://{Request.Host}/uploads/venue/{fileName}";
+
+        return Ok(new
+        {
+            code = 0,
+            msg = "图片上传成功",
+            data = new { url }
+        });
+    }
+
 
 }
