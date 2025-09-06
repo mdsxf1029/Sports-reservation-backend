@@ -41,4 +41,14 @@ public class News
     [SwaggerSchema(Description = "封面图片URL")]
     [StringLength(256)]
     public string? CoverUrl { get; set; } = string.Empty;
+
+    [Column("NEWS_SOURCE")]
+    [SwaggerSchema(Description = "新闻来源")]
+    [StringLength(128)]
+    public string? NewsSource { get; set; } = string.Empty;
+
+    [Column("PUBLISHED_BY")]
+    [SwaggerSchema(Description = "发布管理员")]
+    [StringLength(128)]
+    public string? PublishedBy { get; set; } = string.Empty;
 }
