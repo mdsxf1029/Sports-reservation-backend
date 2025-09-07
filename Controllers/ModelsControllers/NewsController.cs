@@ -267,16 +267,6 @@ public class NewsController(OracleDbContext context, IWebHostEnvironment env) : 
                 currNews.CoverUrl = news.CoverUrl;
             }
             
-            if (!string.IsNullOrEmpty(news.NewsSource))
-            {
-                currNews.NewsSource = news.NewsSource;
-            }
-            
-            if (!string.IsNullOrEmpty(news.PublishedBy))
-            {
-                currNews.PublishedBy = news.PublishedBy;
-            }
-            
             context.Entry(currNews).State = EntityState.Modified;
             await context.SaveChangesAsync();
             
