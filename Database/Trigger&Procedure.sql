@@ -261,3 +261,153 @@ begin
    end if;
 end;
 /
+
+
+
+-- 更新预约状态
+CREATE OR REPLACE PROCEDURE update_appointment_status AS
+BEGIN
+    -- 检查所有已过期的 "upcoming" 状态的预约，并将其更改为 "overtime"
+    FOR rec IN (SELECT appointment_id, appointment_status, end_time
+                FROM appointment
+                WHERE end_time < SYSDATE
+                  AND appointment_status = 'upcoming') LOOP
+        UPDATE appointment
+        SET appointment_status = 'overtime'
+        WHERE appointment_id = rec.appointment_id;
+    END LOOP;
+
+    -- 检查所有已过期的 "ongoing" 状态的预约，并将其更改为 "completed"
+    FOR rec IN (SELECT appointment_id, appointment_status, end_time
+                FROM appointment
+                WHERE end_time < SYSDATE
+                  AND appointment_status = 'ongoing') LOOP
+        UPDATE appointment
+        SET appointment_status = 'completed'
+        WHERE appointment_id = rec.appointment_id;
+    END LOOP;
+END update_appointment_status;
+/
+
+
+-- 定时更新预约状态
+BEGIN
+    DBMS_SCHEDULER.create_job (
+        job_name        => 'update_appointment_status_job',  -- 定时任务名称
+        job_type        => 'PLSQL_BLOCK',  -- 作业类型
+        job_action      => 'BEGIN update_appointment_status; END;',  -- 执行的存储过程
+        start_date      => SYSTIMESTAMP,  -- 定时任务开始时间
+        repeat_interval => 'FREQ=MINUTELY; INTERVAL=1',  -- 每 1 分钟执行一次
+        enabled         => TRUE,  -- 启用任务
+        comments        => '每分钟检查并更新预约的状态');
+END;
+/
+
+-- overtime对应过程
+CREATE OR REPLACE PROCEDURE handle_overtime_violation(p_appointment_id IN NUMBER) AS
+    v_user_id      NUMBER;
+    v_points       NUMBER;
+    v_violation_id NUMBER;
+BEGIN
+    -- 1. 获取 user_id
+    SELECT ua.user_id
+    INTO v_user_id
+    FROM user_appointment ua
+    WHERE ua.appointment_id = p_appointment_id;
+    
+    -- 2. 获取当前积分
+    SELECT u.points
+    INTO v_points
+    FROM "USER" u
+    WHERE u.user_id = v_user_id;
+
+    -- 3. 扣除积分
+    UPDATE "USER"
+    SET points = points - 10
+    WHERE user_id = v_user_id;
+
+    -- 4. 在 point_change 表中插入一条记录
+    INSERT INTO point_change (change_id, user_id, change_amount, change_time, change_reason)
+    VALUES (point_change_id_seq.NEXTVAL, v_user_id, -10, SYSDATE, '预约未签到');
+    
+    -- 5. 在 violation 表中插入一条记录
+    INSERT INTO violation (violation_id, appointment_id, violation_reason, violation_time, violation_penalty)
+    VALUES (violation_id_seq.NEXTVAL, p_appointment_id, '预约未签到', SYSDATE, '积分-10');
+    
+    -- 获取生成的 violation_id
+    SELECT violation_id_seq.CURRVAL INTO v_violation_id FROM dual;
+    
+    -- 6. 在 user_violation 表中插入一条记录
+    INSERT INTO user_violation (user_id, violation_id)
+    VALUES (v_user_id, v_violation_id);
+    
+    -- 输出成功信息
+    DBMS_OUTPUT.put_line('处理完成，预约已变为 oveltime，用户积分扣除 10 分');
+EXCEPTION
+    WHEN OTHERS THEN
+        DBMS_OUTPUT.put_line('处理失败：' || SQLERRM);
+END handle_overtime_violation;
+/
+
+--当修改为overtime时使用触发器调用过程
+CREATE OR REPLACE TRIGGER trg_update_overtime
+AFTER UPDATE OF appointment_status
+ON appointment
+FOR EACH ROW
+WHEN (NEW.appointment_status = 'overtime' AND OLD.appointment_status != 'overtime') -- 仅在状态变化时触发
+BEGIN
+    -- 调用存储过程
+    handle_overtime_violation(:NEW.appointment_id);
+END trg_update_overtime;
+/
+
+--completed对应过程
+CREATE OR REPLACE PROCEDURE handle_completed_appointment(p_appointment_id IN NUMBER) AS
+    v_user_id      NUMBER;
+    v_points       NUMBER;
+BEGIN
+    -- 1. 获取 user_id
+    SELECT ua.user_id
+    INTO v_user_id
+    FROM user_appointment ua
+    WHERE ua.appointment_id = p_appointment_id;
+    
+    -- 2. 获取当前积分
+    SELECT u.points
+    INTO v_points
+    FROM "USER" u
+    WHERE u.user_id = v_user_id;
+
+    -- 3. 增加积分
+    UPDATE "USER"
+    SET points = points + 10
+    WHERE user_id = v_user_id;
+
+    -- 4. 在 point_change 表中插入一条记录
+    INSERT INTO point_change (change_id, user_id, change_amount, change_time, change_reason)
+    VALUES (point_change_id_seq.NEXTVAL, v_user_id, 10, SYSDATE, '预约签到');
+    
+    -- 输出成功信息
+    DBMS_OUTPUT.put_line('处理完成，预约已变为 completed，用户积分增加 10 分');
+EXCEPTION
+    WHEN OTHERS THEN
+        -- 错误处理
+        DBMS_OUTPUT.put_line('处理失败：' || SQLERRM);
+END handle_completed_appointment;
+/
+
+
+--当修改为completed使用触发器调用过程
+CREATE OR REPLACE TRIGGER trg_update_completed
+AFTER UPDATE OF appointment_status
+ON appointment
+FOR EACH ROW
+WHEN (NEW.appointment_status = 'completed' AND OLD.appointment_status != 'completed') -- 仅在状态变更时触发
+BEGIN
+    -- 调用存储过程
+    handle_completed_appointment(:NEW.appointment_id);
+END trg_update_completed;
+/
+
+
+
