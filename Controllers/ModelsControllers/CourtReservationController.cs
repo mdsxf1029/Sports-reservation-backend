@@ -202,7 +202,6 @@ namespace Sports_reservation_backend.Controllers
             using var transaction = await _db.Database.BeginTransactionAsync();
             try
             {
-                // 假设每次 confirm-booking 只会创建一个预约
                 var item = request.Appointments.FirstOrDefault();
 
                 // 1. 查询 TimeSlot
@@ -220,12 +219,19 @@ namespace Sports_reservation_backend.Controllers
                 if (vts.TimeSlotStatus == "busy")
                     return Ok(new { success = false, message = $"场地 {item.VenueId} 时间段 {item.TimeSlotId} 已被锁定" });
 
-                // 3. 计算预约开始/结束时间
+                // 3. 查询 Venue，获取价格
+                var venue = await _db.VenueSet.FirstOrDefaultAsync(v => v.VenueId == item.VenueId);
+                if (venue == null)
+                    return Ok(new { success = false, message = $"场地 {item.VenueId} 不存在" });
+
+                decimal price = venue.Price ?? 0m;
+
+                // 4. 计算预约开始/结束时间
                 var date = DateTime.Parse(item.Date).Date;
                 var beginDateTime = date + timeslot.BeginTime!.Value.TimeOfDay;
                 var endDateTime = date + timeslot.EndTime!.Value.TimeOfDay;
 
-                // 4. 创建 Appointment
+                // 5. 创建 Appointment
                 var appointment = new Appointment
                 {
                     ApplyTime = DateTime.Now,
@@ -237,30 +243,30 @@ namespace Sports_reservation_backend.Controllers
                 _db.AppointmentSet.Add(appointment);
                 await _db.SaveChangesAsync(); // 获取 AppointmentId
 
-                // 5. 更新 VenueTimeSlot 状态
+                // 6. 更新 VenueTimeSlot 状态
                 vts.TimeSlotStatus = "busy";
 
-                // 6. 创建 UserAppointment
+                // 7. 创建 UserAppointment
                 _db.UserAppointmentSet.Add(new UserAppointment
                 {
                     AppointmentId = appointment.AppointmentId,
                     UserId = userId
                 });
 
-                // 7. 创建 VenueAppointment
+                // 8. 创建 VenueAppointment
                 _db.VenueAppointmentSet.Add(new VenueAppointment
                 {
                     AppointmentId = appointment.AppointmentId,
                     VenueId = item.VenueId
                 });
 
-                // 8. 创建 Bill（默认 pending，金额可自定义）
+                // 9. 创建 Bill
                 _db.BillSet.Add(new Bill
                 {
                     AppointmentId = appointment.AppointmentId,
                     UserId = userId,
                     BillStatus = "pending",
-                    BillAmount = 1, // 可根据场地/时段价格计算
+                    BillAmount = price,
                     BeginTime = DateTime.Now
                 });
 
@@ -270,7 +276,7 @@ namespace Sports_reservation_backend.Controllers
                 return Ok(new
                 {
                     success = true,
-                    appointment_id = appointment.AppointmentId // 返回当前创建的预约ID
+                    appointment_id = appointment.AppointmentId
                 });
             }
             catch (Exception ex)
@@ -280,8 +286,5 @@ namespace Sports_reservation_backend.Controllers
                 return Ok(new { success = false, message = "预约失败，请稍后重试" });
             }
         }
-
-
-
     }
 }

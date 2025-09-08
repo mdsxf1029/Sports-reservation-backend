@@ -138,13 +138,20 @@ namespace Sports_reservation_backend.Controllers
                     });
                 }
 
+                // 计算相同 VenueName 的数量（包括自己）
+                var count = await _db.VenueSet
+                    .AsNoTracking()
+                    .CountAsync(v => v.VenueName == venue.VenueName);
+
                 var result = new
                 {
                     id = venue.VenueId,
                     name = venue.VenueName,
                     address = venue.VenueLocation,
                     hours = venue.OpeningHours,
-                    image = venue.VenuePictureUrl
+                    image = venue.VenuePictureUrl,
+                    facilities = $"{count}个小场地",
+                    fees = venue.Price
                 };
 
                 return Ok(new
@@ -165,6 +172,7 @@ namespace Sports_reservation_backend.Controllers
                 });
             }
         }
+
 
         [HttpGet("{id}/reservations")]
         public async Task<IActionResult> GetVenueReservations(int id)
