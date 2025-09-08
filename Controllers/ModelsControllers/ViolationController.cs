@@ -36,10 +36,6 @@ public class ViolationController : ControllerBase
                                                        && bl.EndTime >= now)
                      on u.UserId equals b.UserId into blGroup
                 from b2 in blGroup.DefaultIfEmpty() // 左连接，可能没有有效黑名单
-                join appeal in _db.AppealSet on v.ViolationId equals appeal.ViolationId into appealGroup
-                from ap in appealGroup.DefaultIfEmpty() // 左连接，可能没有申诉
-                join processor in _db.UserSet on ap.ProcessorId equals processor.UserId into processorGroup
-                from proc in processorGroup.DefaultIfEmpty() // 左连接，可能没有处理人
                 select new
                 {
                     id = v.ViolationId,
@@ -52,13 +48,7 @@ public class ViolationController : ControllerBase
                         : "",
                     violationDate = v.ViolationTime.HasValue ? v.ViolationTime.Value.ToString("yyyy-MM-dd") : "",
                     isBlacklisted = b2 != null,
-                    blacklistTimestamp = b2 != null ? (DateTime?)b2.BeginTime : null,
-                    appealStatus = ap != null ? ap.AppealStatus : "none",
-                    appealReason = ap != null ? ap.AppealReason : null,
-                    appealTime = ap != null ? ap.AppealTime : null,
-                    processTime = ap != null ? ap.ProcessTime : null,
-                    processor = proc != null ? proc.UserName : null,
-                    rejectReason = ap != null ? ap.RejectReason : null
+                    blacklistTimestamp = b2 != null ? (DateTime?)b2.BeginTime : null
                 }
             ).ToListAsync();
 
