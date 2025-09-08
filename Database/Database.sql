@@ -119,7 +119,7 @@ create table venue (
                                                       '关闭' ) ), -- 发布状态
    opening_hours     varchar(50), --开放时间段
    booking_hours     varchar(50), --提供预约服务时间段
-   price             number, --单价
+   price             number not null, --单价
    price_unit        varchar(20) --单价对应时间单位
 );
 

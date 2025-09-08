@@ -543,7 +543,7 @@ public class PostReportController(OracleDbContext context) : ControllerBase
             report.ReporterId = userId;
             report.ReportedPostId = postId;
             report.ReportedUserId = userPost.UserId;
-            report.ReportTime = DateTime.Now;
+            report.ReportTime = DateTime.UtcNow.AddHours(8);
             report.ReportStatus = "checking";
             
             context.PostReportSet.Add(report);
@@ -684,7 +684,7 @@ public class PostReportController(OracleDbContext context) : ControllerBase
             {
                 ReportId = reportId,
                 ManagerId = user.UserId,
-                ManageTime = DateTime.Now,
+                ManageTime = DateTime.UtcNow.AddHours(8),
                 ManageReason = request.Reason,
             };
             

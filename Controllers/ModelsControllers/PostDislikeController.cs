@@ -87,7 +87,7 @@ public class PostDislikeController(OracleDbContext context) : ControllerBase
         {
             PostId = postId,
             UserId = userId,
-            DislikeTime = DateTime.Now
+            DislikeTime = DateTime.UtcNow.AddHours(8)
         };
 
         context.PostDislikeSet.Add(dislike);

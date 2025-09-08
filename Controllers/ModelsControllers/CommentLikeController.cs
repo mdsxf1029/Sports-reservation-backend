@@ -86,7 +86,7 @@ public class CommentLikeController(OracleDbContext context) : ControllerBase
         {
             CommentId = commentId,
             UserId = userId,
-            LikeTime = DateTime.Now
+            LikeTime = DateTime.UtcNow.AddHours(8)
         };
 
         context.CommentLikeSet.Add(like);

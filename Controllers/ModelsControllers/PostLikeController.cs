@@ -87,7 +87,7 @@ public class PostLikeController(OracleDbContext context) : ControllerBase
         {
             PostId = postId,
             UserId = userId,
-            LikeTime = DateTime.Now
+            LikeTime = DateTime.UtcNow.AddHours(8)
         };
 
         context.PostLikeSet.Add(like);

@@ -283,7 +283,7 @@ public class CommentController(OracleDbContext context) : ControllerBase
         try
         {
             comment.CommentStatus = "public";
-            comment.CommentTime = DateTime.Now;
+            comment.CommentTime = DateTime.UtcNow.AddHours(8);
             comment.LikeCount = 0;
             comment.DislikeCount = 0;
 
@@ -344,7 +344,7 @@ public class CommentController(OracleDbContext context) : ControllerBase
         }
         
         reply.CommentStatus = "public";
-        reply.CommentTime = DateTime.Now;
+        reply.CommentTime = DateTime.UtcNow.AddHours(8);
         reply.LikeCount = 0;
         reply.DislikeCount = 0;
         

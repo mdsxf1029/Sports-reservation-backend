@@ -153,7 +153,7 @@ public class PostCollectionController(OracleDbContext context) : ControllerBase
         {
             UserId = userId,
             PostId = postId,
-            CollectedTime = DateTime.Now
+            CollectedTime = DateTime.UtcNow.AddHours(8)
         };
 
         context.PostCollectionSet.Add(collection);

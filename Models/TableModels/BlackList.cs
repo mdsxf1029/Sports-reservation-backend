@@ -2,26 +2,27 @@
 using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
 using Swashbuckle.AspNetCore.Annotations;
+using Microsoft.EntityFrameworkCore;
 
 namespace Sports_reservation_backend.Models.TableModels;
 
+[PrimaryKey(nameof(UserId), nameof(BeginTime))]
 [Table("BLACKLIST")]
 [SwaggerSchema(Description = "黑名单表（普通用户-管理员）")]
 public class Blacklist
 {
-    [Key]
     [Column("USER_ID")]
     [SwaggerSchema("用户ID")]
     public int UserId { get; set; }
-
-    [Column("MANAGER_ID")]
-    [SwaggerSchema("管理员ID")]
-    public int? ManagerId { get; set; }
 
     [Required]
     [Column("BEGIN_TIME")]
     [SwaggerSchema("开始时间")]
     public DateTime BeginTime { get; set; }
+
+    [Column("MANAGER_ID")]
+    [SwaggerSchema("管理员ID")]
+    public int? ManagerId { get; set; }
 
     [Required]
     [Column("END_TIME")]
