@@ -201,25 +201,12 @@ namespace Sports_reservation_backend.Controllers
                 }
 
                 // 4. 修改预约状态
-                appointment.AppointmentStatus = "completed";
+                appointment.AppointmentStatus = "ongoing";
 
-                // 5. 修改用户积分
-                user.Points += 10;
-
-                // 6. 新增积分变更记录
-                var pointChange = new PointChange
-                {
-                    UserId = user.UserId,
-                    ChangeAmount = 10,
-                    ChangeTime = DateTime.Now,
-                    ChangeReason = "签到成功"
-                };
-                _db.PointChangeSet.Add(pointChange);
-
-                // 7. 保存事务
+                // 5. 保存事务
                 await _db.SaveChangesAsync();
 
-                return Ok(new { success = true, message = "签到成功，积分+10" });
+                return Ok(new { success = true, message = "签到成功，status变更为ongoing" });
             }
             catch (Exception ex)
             {
