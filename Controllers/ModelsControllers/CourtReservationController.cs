@@ -286,10 +286,9 @@ namespace Sports_reservation_backend.Controllers
                 return Ok(new { success = false, message = "预约失败，请稍后重试" });
             }
         }
-
 [Authorize]
-[HttpGet("user-limit-status")]
-public async Task<IActionResult> GetUserLimitStatus()
+[HttpPost("user-limit-status")] // 改成 POST，因为要接收请求体
+public async Task<IActionResult> GetUserLimitStatus([FromBody] DateRequest request)
 {
     try
     {
@@ -315,26 +314,39 @@ public async Task<IActionResult> GetUserLimitStatus()
             });
         }
 
-        // 3. 获取当天已预约时长
-        var today = DateTime.Today;
-        var tomorrow = today.AddDays(1);
+        // 3. 处理请求日期
+        DateTime targetDate;
+        if (!string.IsNullOrWhiteSpace(request?.Date))
+        {
+            if (!DateTime.TryParse(request.Date, out targetDate))
+            {
+                return Ok(new { success = false, message = "日期格式错误，应为 yyyy-MM-dd" });
+            }
+        }
+        else
+        {
+            targetDate = DateTime.Today;
+        }
 
+        var nextDay = targetDate.AddDays(1);
+
+        // 4. 查询该日期的预约
         var appointments = await (
             from ua in _db.UserAppointmentSet
             join a in _db.AppointmentSet on ua.AppointmentId equals a.AppointmentId
             where ua.UserId == userId
-                  && a.BeginTime >= today
-                  && a.BeginTime < tomorrow
+                  && a.BeginTime >= targetDate
+                  && a.BeginTime < nextDay
                   && (a.AppointmentStatus == "upcoming" 
                       || a.AppointmentStatus == "ongoing" 
-                      || a.AppointmentStatus == "completed")
+                      || a.AppointmentStatus == "completed"
+                      || a.AppointmentStatus == "overtime")
             select new { a.BeginTime, a.EndTime }
         ).ToListAsync();
 
-        // 在内存中计算总小时数
         int usedHours = (int)appointments.Sum(a => (a.EndTime.Value - a.BeginTime.Value).TotalHours);
 
-        // 4. 获取每日限制
+        // 5. 每日限制（每天最多4小时）
         int dailyLimit = 4;
 
         return Ok(new
@@ -344,7 +356,7 @@ public async Task<IActionResult> GetUserLimitStatus()
             dailyLimit = dailyLimit,
             usedHours = usedHours,
             remainingHours = dailyLimit - usedHours,
-            today = today.ToString("yyyy-MM-dd")
+            date = targetDate.ToString("yyyy-MM-dd")
         });
     }
     catch (Exception ex)
@@ -353,6 +365,13 @@ public async Task<IActionResult> GetUserLimitStatus()
         return Ok(new { success = false, message = "获取失败，请稍后重试" });
     }
 }
+
+// 请求体类
+public class DateRequest
+{
+    public string? Date { get; set; } // yyyy-MM-dd
+}
+
 
 
     }
