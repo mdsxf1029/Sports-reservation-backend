@@ -156,7 +156,7 @@ public class NewsController(OracleDbContext context, IWebHostEnvironment env) : 
     {
         try
         {
-            news.NewsTime = DateTime.Now;
+            news.NewsTime = DateTime.UtcNow.AddHours(8);
             
             context.NewsSet.Add(news);
             await context.SaveChangesAsync();

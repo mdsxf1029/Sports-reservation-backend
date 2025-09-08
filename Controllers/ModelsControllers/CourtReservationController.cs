@@ -224,7 +224,7 @@ namespace Sports_reservation_backend.Controllers
                 if (venue == null)
                     return Ok(new { success = false, message = $"场地 {item.VenueId} 不存在" });
 
-                decimal price = venue.Price ?? 0m;
+                decimal price = venue.Price;
 
                 // 4. 计算预约开始/结束时间
                 var date = DateTime.Parse(item.Date).Date;
@@ -234,7 +234,7 @@ namespace Sports_reservation_backend.Controllers
                 // 5. 创建 Appointment
                 var appointment = new Appointment
                 {
-                    ApplyTime = DateTime.Now,
+                    ApplyTime = DateTime.UtcNow.AddHours(8),
                     FinishTime = null,
                     BeginTime = beginDateTime,
                     EndTime = endDateTime,
@@ -267,7 +267,7 @@ namespace Sports_reservation_backend.Controllers
                     UserId = userId,
                     BillStatus = "pending",
                     BillAmount = price,
-                    BeginTime = DateTime.Now
+                    BeginTime = DateTime.UtcNow.AddHours(8)
                 });
 
                 await _db.SaveChangesAsync();
@@ -286,5 +286,74 @@ namespace Sports_reservation_backend.Controllers
                 return Ok(new { success = false, message = "预约失败，请稍后重试" });
             }
         }
+
+[Authorize]
+[HttpGet("user-limit-status")]
+public async Task<IActionResult> GetUserLimitStatus()
+{
+    try
+    {
+        // 1. 从 token 获取 userId
+        var userIdStr = User.FindFirst("userId")?.Value;
+        if (!int.TryParse(userIdStr, out int userId))
+        {
+            return Ok(new { success = false, message = "Token 无效" });
+        }
+
+        // 2. 检查用户是否在有效黑名单
+        var blacklist = await _db.BlacklistSet
+            .Where(b => b.UserId == userId && b.BannedStatus == "valid")
+            .FirstOrDefaultAsync();
+
+        if (blacklist != null)
+        {
+            return Ok(new
+            {
+                success = false,
+                message = "该用户已被封禁，无法预约",
+                userId = userId
+            });
+        }
+
+        // 3. 获取当天已预约时长
+        var today = DateTime.Today;
+        var tomorrow = today.AddDays(1);
+
+        var appointments = await (
+            from ua in _db.UserAppointmentSet
+            join a in _db.AppointmentSet on ua.AppointmentId equals a.AppointmentId
+            where ua.UserId == userId
+                  && a.BeginTime >= today
+                  && a.BeginTime < tomorrow
+                  && (a.AppointmentStatus == "upcoming" 
+                      || a.AppointmentStatus == "ongoing" 
+                      || a.AppointmentStatus == "completed")
+            select new { a.BeginTime, a.EndTime }
+        ).ToListAsync();
+
+        // 在内存中计算总小时数
+        int usedHours = (int)appointments.Sum(a => (a.EndTime.Value - a.BeginTime.Value).TotalHours);
+
+        // 4. 获取每日限制
+        int dailyLimit = 4;
+
+        return Ok(new
+        {
+            success = true,
+            userId = userId,
+            dailyLimit = dailyLimit,
+            usedHours = usedHours,
+            remainingHours = dailyLimit - usedHours,
+            today = today.ToString("yyyy-MM-dd")
+        });
+    }
+    catch (Exception ex)
+    {
+        _logger.LogError(ex, "获取用户预约时长失败");
+        return Ok(new { success = false, message = "获取失败，请稍后重试" });
+    }
+}
+
+
     }
 }

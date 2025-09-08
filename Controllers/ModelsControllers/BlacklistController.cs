@@ -86,7 +86,7 @@ namespace Sports_reservation_backend.Controllers
                 if (user == null) return BadRequest(new { success = false, message = "用户不存在" });
 
                 // 3. 添加黑名单记录
-                var now = DateTime.Now;
+                var now = DateTime.UtcNow.AddHours(8);;
                 var blacklist = new Blacklist
                 {
                     UserId = request.Id,

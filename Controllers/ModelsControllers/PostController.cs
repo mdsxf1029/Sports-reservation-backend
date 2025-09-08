@@ -436,7 +436,7 @@ public class PostController(OracleDbContext context) : ControllerBase
             post.DislikeCount = 0;
             post.CommentCount = 0;
             post.CollectionCount = 0;
-            post.PostTime = DateTime.Now;
+            post.PostTime = DateTime.UtcNow.AddHours(8);
             post.PostStatus = (post.PostStatus == "private") ? "private" : "public";
 
             context.PostSet.Add(post);

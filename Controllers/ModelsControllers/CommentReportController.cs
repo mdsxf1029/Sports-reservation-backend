@@ -533,7 +533,7 @@ public class CommentReportController (OracleDbContext context) : ControllerBase
             report.ReporterId = userId;
             report.ReportedCommentId = commentId;
             report.ReportedUserId = author.UserId;
-            report.ReportTime = DateTime.Now;
+            report.ReportTime = DateTime.UtcNow.AddHours(8);
             report.ReportStatus = "checking";
             
             context.CommentReportSet.Add(report);
@@ -674,7 +674,7 @@ public class CommentReportController (OracleDbContext context) : ControllerBase
             {
                 ReportId = reportId,
                 ManagerId = user.UserId,
-                ManageTime = DateTime.Now,
+                ManageTime = DateTime.UtcNow.AddHours(8),
                 ManageReason = request.Reason,
             };
             

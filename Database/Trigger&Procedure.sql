@@ -16,7 +16,7 @@ create or replace trigger set_register_time before
    for each row
 begin
    if :new.register_time is null then
-      :new.register_time := sysdate;
+      :new.register_time := (SYSTIMESTAMP + INTERVAL '8' HOUR);
    end if;
 end;
 /
@@ -257,7 +257,7 @@ create or replace trigger set_notification_time before
    for each row
 begin
    if :new.createtime is null then
-      :new.createtime := sysdate;
+      :new.createtime := (SYSTIMESTAMP + INTERVAL '8' HOUR);
    end if;
 end;
 /
@@ -270,7 +270,7 @@ BEGIN
     -- 检查所有已过期的 "upcoming" 状态的预约，并将其更改为 "overtime"
     FOR rec IN (SELECT appointment_id, appointment_status, end_time
                 FROM appointment
-                WHERE end_time < SYSDATE
+                WHERE end_time < (SYSTIMESTAMP + INTERVAL '8' HOUR)
                   AND appointment_status = 'upcoming') LOOP
         UPDATE appointment
         SET appointment_status = 'overtime'
@@ -280,7 +280,7 @@ BEGIN
     -- 检查所有已过期的 "ongoing" 状态的预约，并将其更改为 "completed"
     FOR rec IN (SELECT appointment_id, appointment_status, end_time
                 FROM appointment
-                WHERE end_time < SYSDATE
+                WHERE end_time < (SYSTIMESTAMP + INTERVAL '8' HOUR)
                   AND appointment_status = 'ongoing') LOOP
         UPDATE appointment
         SET appointment_status = 'completed'
@@ -328,11 +328,11 @@ BEGIN
 
     -- 4. 在 point_change 表中插入一条记录
     INSERT INTO point_change (change_id, user_id, change_amount, change_time, change_reason)
-    VALUES (point_change_id_seq.NEXTVAL, v_user_id, -10, SYSDATE, '预约未签到');
+    VALUES (point_change_id_seq.NEXTVAL, v_user_id, -10, (SYSTIMESTAMP + INTERVAL '8' HOUR), '预约未签到');
     
     -- 5. 在 violation 表中插入一条记录
     INSERT INTO violation (violation_id, appointment_id, violation_reason, violation_time, violation_penalty)
-    VALUES (violation_id_seq.NEXTVAL, p_appointment_id, '预约未签到', SYSDATE, '积分-10');
+    VALUES (violation_id_seq.NEXTVAL, p_appointment_id, '预约未签到', (SYSTIMESTAMP + INTERVAL '8' HOUR), '积分-10');
     
     -- 获取生成的 violation_id
     SELECT violation_id_seq.CURRVAL INTO v_violation_id FROM dual;
@@ -385,7 +385,7 @@ BEGIN
 
     -- 4. 在 point_change 表中插入一条记录
     INSERT INTO point_change (change_id, user_id, change_amount, change_time, change_reason)
-    VALUES (point_change_id_seq.NEXTVAL, v_user_id, 10, SYSDATE, '预约签到');
+    VALUES (point_change_id_seq.NEXTVAL, v_user_id, 10, (SYSTIMESTAMP + INTERVAL '8' HOUR), '预约签到');
     
     -- 输出成功信息
     DBMS_OUTPUT.put_line('处理完成，预约已变为 completed，用户积分增加 10 分');
@@ -410,4 +410,57 @@ END trg_update_completed;
 /
 
 
+-- 1. 创建一个存储过程来更新过期的黑名单
+CREATE OR REPLACE PROCEDURE UPDATE_EXPIRED_BLACKLIST
+IS
+BEGIN
+    UPDATE BLACKLIST
+    SET BANNED_STATUS = 'invalid'
+    WHERE BANNED_STATUS = 'valid'
+      AND ENDTIME <= (SYSTIMESTAMP + INTERVAL '8' HOUR);
+      
+    COMMIT;
+END;
+/
 
+-- 2. 创建一个 Scheduler Job，每分钟执行一次
+BEGIN
+    DBMS_SCHEDULER.CREATE_JOB (
+        job_name        => 'CHECK_BLACKLIST_EXPIRY',
+        job_type        => 'STORED_PROCEDURE',
+        job_action      => 'UPDATE_EXPIRED_BLACKLIST',
+        start_date      => SYSTIMESTAMP,
+        repeat_interval => 'FREQ=MINUTELY; INTERVAL=1', -- 每分钟执行
+        enabled         => TRUE,
+        comments        => '每分钟检查一次黑名单是否过期'
+    );
+END;
+/
+
+
+-- 1. 创建一个存储过程来更新过期的黑名单
+CREATE OR REPLACE PROCEDURE UPDATE_EXPIRED_BLACKLIST
+IS
+BEGIN
+    UPDATE BLACKLIST
+    SET BANNED_STATUS = 'invalid'
+    WHERE BANNED_STATUS = 'valid'
+      AND END_TIME <= (SYSTIMESTAMP + INTERVAL '8' HOUR); -- 注意时区！！
+      
+    COMMIT;
+END;
+/
+
+-- 2. 创建一个 Scheduler Job，每分钟执行一次
+BEGIN
+    DBMS_SCHEDULER.CREATE_JOB (
+        job_name        => 'CHECK_BLACKLIST_EXPIRY',
+        job_type        => 'STORED_PROCEDURE',
+        job_action      => 'UPDATE_EXPIRED_BLACKLIST',
+        start_date      => SYSTIMESTAMP,
+        repeat_interval => 'FREQ=MINUTELY; INTERVAL=1', -- 每分钟执行
+        enabled         => TRUE,
+        comments        => '每分钟检查一次黑名单是否过期'
+    );
+END;
+/

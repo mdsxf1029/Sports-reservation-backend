@@ -61,9 +61,10 @@ public class Venue
     [SwaggerSchema("提供预约服务时间段")]
     public string? BookingHours { get; set; }
 
+    [Required]
     [Column("PRICE")]
     [SwaggerSchema("单价")]
-    public decimal? Price { get; set; }
+    public decimal Price { get; set; } = 0;
 
     [Column("PRICE_UNIT")]
     [StringLength(20)]

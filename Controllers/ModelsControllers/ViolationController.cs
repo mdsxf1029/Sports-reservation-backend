@@ -22,7 +22,7 @@ public class ViolationController : ControllerBase
     {
         try
         {
-            var now = DateTime.Now;
+            var now = DateTime.UtcNow.AddHours(8);
 
             var violations = await (
                 from v in _db.ViolationSet
@@ -31,9 +31,7 @@ public class ViolationController : ControllerBase
                 join a in _db.AppointmentSet on v.AppointmentId equals a.AppointmentId
                 join va in _db.VenueAppointmentSet on a.AppointmentId equals va.AppointmentId
                 join ve in _db.VenueSet on va.VenueId equals ve.VenueId
-                join b in _db.BlacklistSet.Where(bl => bl.BannedStatus == "valid"
-                                                       && bl.BeginTime <= now
-                                                       && bl.EndTime >= now)
+                join b in _db.BlacklistSet.Where(bl => bl.BannedStatus == "valid")
                      on u.UserId equals b.UserId into blGroup
                 from b2 in blGroup.DefaultIfEmpty() // 左连接，可能没有有效黑名单
                 select new
@@ -87,7 +85,7 @@ public class ViolationController : ControllerBase
                 AppointmentId = request.AppointmentId,
                 ViolationReason = request.ViolationReason,
                 ViolationPenalty = request.ViolationPenalty,
-                ViolationTime = DateTime.Now
+                ViolationTime = DateTime.UtcNow.AddHours(8)
             };
             _db.ViolationSet.Add(violation);
             await _db.SaveChangesAsync(); // 获取 violation_id
@@ -110,12 +108,10 @@ public class ViolationController : ControllerBase
             ).FirstOrDefaultAsync();
 
             // 5. 查询是否在黑名单
-            var now = DateTime.Now;
+            var now = DateTime.UtcNow.AddHours(8);
             var blacklist = await _db.BlacklistSet
                 .Where(b => b.UserId == request.UserId
-                            && b.BannedStatus == "valid"
-                            && b.BeginTime <= now
-                            && b.EndTime >= now)
+                            && b.BannedStatus == "valid")
                 .FirstOrDefaultAsync();
 
             // 6. 返回结果

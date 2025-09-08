@@ -95,7 +95,7 @@ namespace Sports_reservation_backend.Controllers.AuthControllers
                 var tokenDescriptor = new SecurityTokenDescriptor
                 {
                     Subject = new ClaimsIdentity(claims),
-                    Expires = DateTime.UtcNow.AddHours(1),
+                    Expires = DateTime.UtcNow.AddHours(8),
                     Issuer = jwtIssuer,
                     Audience = jwtAudience,
                     SigningCredentials = new SigningCredentials(key, SecurityAlgorithms.HmacSha256Signature)
