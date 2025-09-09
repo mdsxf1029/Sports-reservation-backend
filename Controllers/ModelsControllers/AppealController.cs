@@ -33,32 +33,121 @@ public class AppealController : ControllerBase
     {
         try
         {
-            // 1. 基础查询 (多表联查)
-            var query =
-                from a in _db.AppealSet
-                join v in _db.ViolationSet on a.ViolationId equals v.ViolationId
-                join u in _db.UserSet on a.UserId equals u.UserId
-                join va in _db.VenueAppointmentSet on v.AppointmentId equals va.AppointmentId
-                join ve in _db.VenueSet on va.VenueId equals ve.VenueId
-                join ts in _db.TimeslotSet on va.TimeslotId equals ts.TimeslotId
-                join pu in _db.UserSet on a.ProcessorId equals pu.UserId into processorJoin
-                from processorUser in processorJoin.DefaultIfEmpty()
-                select new
-                {
-                    Id = a.AppealId,
-                    UserName = u.UserName,
-                    UserId = u.UserId,
-                    UserAvatar = u.AvatarUrl,
-                    ViolationTime = v.ViolationTime,
-                    Venue = ve.VenueName,
-                    TimeSlot = ts.BeginTime + "-" + ts.EndTime,
-                    AppealReason = a.AppealReason,
-                    AppealTime = a.AppealTime,
-                    AppealStatus = a.AppealStatus,
-                    Processor = a.ProcessorId,
-                    ProcessorName = processorUser != null ? processorUser.UserName : null,
-                    ProcessTime = a.ProcessTime,
-                };
+            // 1. 基础查询：只查询 Appeal 表，后续通过关联字段查询相关数据
+            var query = _db
+                .AppealSet.Join(
+                    _db.ViolationSet,
+                    a => a.ViolationId,
+                    v => v.ViolationId,
+                    (a, v) => new { a, v }
+                )
+                .Join(
+                    _db.UserSet,
+                    av => av.a.UserId,
+                    u => u.UserId,
+                    (av, u) =>
+                        new
+                        {
+                            av.a,
+                            av.v,
+                            u,
+                        }
+                )
+                .Join(
+                    _db.VenueAppointmentSet,
+                    avu => avu.v.AppointmentId,
+                    va => va.AppointmentId,
+                    (avu, va) =>
+                        new
+                        {
+                            avu.a,
+                            avu.v,
+                            avu.u,
+                            va,
+                        }
+                )
+                .Join(
+                    _db.VenueSet,
+                    avuva => avuva.va.VenueId,
+                    ve => ve.VenueId,
+                    (avuva, ve) =>
+                        new
+                        {
+                            avuva.a,
+                            avuva.v,
+                            avuva.u,
+                            avuva.va,
+                            ve,
+                        }
+                )
+                .Join(
+                    _db.AppointmentSet,
+                    avuve => avuve.va.AppointmentId,
+                    app => app.AppointmentId,
+                    (avuve, app) =>
+                        new
+                        {
+                            avuve.a,
+                            avuve.v,
+                            avuve.u,
+                            avuve.va,
+                            avuve.ve,
+                            app,
+                        }
+                )
+                .Join(
+                    _db.TimeSlotSet,
+                    avuvea => avuvea.app.BeginTime,
+                    ts => ts.BeginTime,
+                    (avuvea, ts) =>
+                        new
+                        {
+                            avuvea.a,
+                            avuvea.v,
+                            avuvea.u,
+                            avuvea.va,
+                            avuvea.ve,
+                            avuvea.app,
+                            ts,
+                        }
+                )
+                .GroupJoin(
+                    _db.UserSet,
+                    avuvea => avuvea.a.ProcessorId,
+                    pu => pu.UserId,
+                    (avuvea, processorJoin) =>
+                        new
+                        {
+                            avuvea.a,
+                            avuvea.v,
+                            avuvea.u,
+                            avuvea.va,
+                            avuvea.ve,
+                            avuvea.app,
+                            avuvea.ts,
+                            processorJoin,
+                        }
+                )
+                .SelectMany(
+                    avuvea => avuvea.processorJoin.DefaultIfEmpty(),
+                    (avuvea, processorUser) =>
+                        new
+                        {
+                            Id = avuvea.a.AppealId,
+                            UserName = avuvea.u.UserName,
+                            UserId = avuvea.u.UserId,
+                            UserAvatar = avuvea.u.AvatarUrl,
+                            ViolationTime = avuvea.v.ViolationTime,
+                            Venue = avuvea.ve.VenueName,
+                            TimeSlot = avuvea.ts.BeginTime + "-" + avuvea.ts.EndTime,
+                            AppealReason = avuvea.a.AppealReason,
+                            AppealTime = avuvea.a.AppealTime,
+                            AppealStatus = avuvea.a.AppealStatus,
+                            Processor = avuvea.a.ProcessorId,
+                            ProcessorName = processorUser != null ? processorUser.UserName : null,
+                            ProcessTime = avuvea.a.ProcessTime,
+                        }
+                );
 
             // 2. 过滤条件
             if (!string.IsNullOrWhiteSpace(status))
@@ -114,33 +203,21 @@ public class AppealController : ControllerBase
     {
         try
         {
-            var appeal = await (
-                from a in _db.AppealSet
-                join v in _db.ViolationSet on a.ViolationId equals v.ViolationId
-                join u in _db.UserSet on a.UserId equals u.UserId
-                join va in _db.VenueAppointmentSet on v.AppointmentId equals va.AppointmentId
-                join ve in _db.VenueSet on va.VenueId equals ve.VenueId
-                join ts in _db.TimeslotSet on va.TimeslotId equals ts.TimeslotId
-                join pu in _db.UserSet on a.ProcessorId equals pu.UserId into processorJoin
-                from processorUser in processorJoin.DefaultIfEmpty()
-                where a.AppealId == appealId
-                select new
+            // 先获取申诉基本信息
+            var appeal = await _db
+                .AppealSet.Where(a => a.AppealId == appealId)
+                .Select(a => new
                 {
-                    Id = a.AppealId,
-                    UserName = u.UserName,
-                    UserId = u.UserId,
-                    UserAvatar = u.AvatarUrl,
-                    ViolationTime = v.ViolationTime,
-                    Venue = ve.VenueName,
-                    TimeSlot = ts.BeginTime + "-" + ts.EndTime,
-                    AppealReason = a.AppealReason,
-                    AppealTime = a.AppealTime,
-                    AppealStatus = a.AppealStatus,
-                    Processor = a.ProcessorId,
-                    ProcessorName = processorUser != null ? processorUser.UserName : null,
-                    ProcessTime = a.ProcessTime,
-                }
-            ).FirstOrDefaultAsync();
+                    a.AppealId,
+                    a.AppealReason,
+                    a.AppealTime,
+                    a.AppealStatus,
+                    a.ProcessTime,
+                    a.ProcessorId,
+                    a.ViolationId,
+                    a.UserId,
+                })
+                .FirstOrDefaultAsync();
 
             if (appeal == null)
             {
@@ -154,7 +231,88 @@ public class AppealController : ControllerBase
                 );
             }
 
-            return Ok(new { code = 200, data = appeal });
+            // 获取违约记录（Violation）信息
+            var violation = await _db
+                .ViolationSet.Where(v => v.ViolationId == appeal.ViolationId)
+                .Select(v => new { v.AppointmentId, v.ViolationTime })
+                .FirstOrDefaultAsync();
+
+            if (violation == null)
+            {
+                return Ok(
+                    new
+                    {
+                        code = 404,
+                        message = "违约记录不存在",
+                        data = (object?)null,
+                    }
+                );
+            }
+
+            // 获取预约（Appointment）信息
+            var appointment = await _db
+                .AppointmentSet.Where(app => app.AppointmentId == violation.AppointmentId)
+                .Select(app => new { app.BeginTime, app.EndTime })
+                .FirstOrDefaultAsync();
+
+            if (appointment == null)
+            {
+                return Ok(
+                    new
+                    {
+                        code = 404,
+                        message = "预约记录不存在",
+                        data = (object?)null,
+                    }
+                );
+            }
+
+            // 获取时间段（TimeSlot）信息
+            var timeSlot = await _db
+                .TimeSlotSet.Where(ts => ts.BeginTime == appointment.BeginTime)
+                .Select(ts => new { ts.BeginTime, ts.EndTime })
+                .FirstOrDefaultAsync();
+
+            if (timeSlot == null)
+            {
+                return Ok(
+                    new
+                    {
+                        code = 404,
+                        message = "时间段不存在",
+                        data = (object?)null,
+                    }
+                );
+            }
+
+            // 获取用户信息（User）
+            var user = await _db
+                .UserSet.Where(u => u.UserId == appeal.UserId)
+                .Select(u => new { u.UserName, u.AvatarUrl })
+                .FirstOrDefaultAsync();
+
+            // 获取处理人信息（Processor）
+            var processor = await _db
+                .UserSet.Where(u => u.UserId == appeal.ProcessorId)
+                .Select(u => new { u.UserName })
+                .FirstOrDefaultAsync();
+
+            // 组装最终返回的数据
+            var result = new
+            {
+                appeal.AppealId,
+                UserName = user?.UserName,
+                UserAvatar = user?.AvatarUrl,
+                ViolationTime = violation.ViolationTime,
+                TimeSlot = $"{timeSlot.BeginTime} - {timeSlot.EndTime}",
+                AppealReason = appeal.AppealReason,
+                AppealTime = appeal.AppealTime,
+                AppealStatus = appeal.AppealStatus,
+                ProcessorName = processor?.UserName,
+                ProcessTime = appeal.ProcessTime,
+            };
+
+            return Ok(new { code = 200, data = result });
         }
         catch (Exception ex)
         {
