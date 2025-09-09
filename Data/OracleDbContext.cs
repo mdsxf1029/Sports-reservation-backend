@@ -1,5 +1,4 @@
 ﻿using Microsoft.EntityFrameworkCore;
-
 using Sports_reservation_backend.Models.TableModels;
 
 namespace Sports_reservation_backend.Data;
@@ -8,6 +7,7 @@ public class OracleDbContext(DbContextOptions<OracleDbContext> options) : DbCont
 {
     // 配置数据库上下文实体集
     public DbSet<Appointment> AppointmentSet { get; set; }
+    public DbSet<Appeal> AppealSet { get; set; }
     public DbSet<Bill> BillSet { get; set; }
     public DbSet<Blacklist> BlacklistSet { get; set; }
     public DbSet<CheckIn> CheckInSet { get; set; }
@@ -44,7 +44,5 @@ public class OracleDbContext(DbContextOptions<OracleDbContext> options) : DbCont
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         base.OnModelCreating(modelBuilder);
-
-
     }
 }
