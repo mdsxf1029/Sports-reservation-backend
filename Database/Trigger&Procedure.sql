@@ -1,4 +1,40 @@
-﻿-- 创建 sequence 用于user_id自增
+﻿--创建 sequence 用于 news_id 自增
+create sequence news_id_seq start with 1 increment by 1;
+
+create or replace trigger trg_news_id before
+   insert on news
+   for each row
+begin
+   :new.news_id := news_id_seq.nextval;
+end;
+
+
+
+-- 创建 sequence 用于 comment_report_handle_id 自增
+create sequence comment_report_handle_id_seq start with 1 increment by 1;
+
+create or replace trigger trg_comment_report_handle_id before
+   insert on comment_report_handling
+   for each row
+begin
+   :new.handle_id := comment_report_handle_id_seq.nextval;
+end;
+
+
+
+-- 创建 sequence 用于 post_report_handle_id 自增
+create sequence post_report_handle_id_seq start with 1 increment by 1;
+
+create or replace trigger trg_post_report_handle_id before
+   insert on post_report_handling
+   for each row
+begin
+   :new.handle_id := post_report_handle_id_seq.nextval;
+end;
+
+
+
+-- 创建 sequence 用于user_id自增
 create sequence user_id_seq start with 1 increment by 1;
 
 -- 创建触发器，在插入时自动赋值 user_id
