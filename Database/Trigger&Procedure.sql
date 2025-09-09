@@ -51,9 +51,7 @@ create or replace trigger set_register_time before
    insert on "USER"
    for each row
 begin
-   if :new.register_time is null then
       :new.register_time := ( systimestamp + interval '8' hour );
-   end if;
 end;
 /
 
