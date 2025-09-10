@@ -1,4 +1,40 @@
-﻿-- 创建 sequence 用于user_id自增
+﻿--创建 sequence 用于 news_id 自增
+create sequence news_id_seq start with 1 increment by 1;
+
+create or replace trigger trg_news_id before
+   insert on news
+   for each row
+begin
+   :new.news_id := news_id_seq.nextval;
+end;
+
+
+
+-- 创建 sequence 用于 comment_report_handle_id 自增
+create sequence comment_report_handle_id_seq start with 1 increment by 1;
+
+create or replace trigger trg_comment_report_handle_id before
+   insert on comment_report_handling
+   for each row
+begin
+   :new.handle_id := comment_report_handle_id_seq.nextval;
+end;
+
+
+
+-- 创建 sequence 用于 post_report_handle_id 自增
+create sequence post_report_handle_id_seq start with 1 increment by 1;
+
+create or replace trigger trg_post_report_handle_id before
+   insert on post_report_handling
+   for each row
+begin
+   :new.handle_id := post_report_handle_id_seq.nextval;
+end;
+
+
+
+-- 创建 sequence 用于user_id自增
 create sequence user_id_seq start with 1 increment by 1;
 
 -- 创建触发器，在插入时自动赋值 user_id
@@ -15,9 +51,7 @@ create or replace trigger set_register_time before
    insert on "USER"
    for each row
 begin
-   if :new.register_time is null then
-      :new.register_time := ( systimestamp + interval '8' hour );
-   end if;
+   :new.register_time := ( systimestamp + interval '8' hour );
 end;
 /
 
@@ -336,7 +370,6 @@ begin
 end;
 /
 
--- overtime对应过程
 create or replace procedure handle_overtime_violation (
    p_appointment_id in number
 ) as
@@ -399,14 +432,26 @@ begin
       violation_id
    ) values ( v_user_id,
               v_violation_id );
-    
+
+    -- 7. 插入一条通知
+   insert into notification (
+      notification_id,
+      user_id,
+      content,
+      isread
+   ) values ( notification_id_seq.nextval,
+              v_user_id,
+              '您有一次预约因超时未签到违约！',
+              0 );
+
     -- 输出成功信息
-   dbms_output.put_line('处理完成，预约已变为 oveltime，用户积分扣除 10 分');
+   dbms_output.put_line('处理完成，预约已变为 overtime，用户积分扣除 10 分，并发送通知');
 exception
    when others then
       dbms_output.put_line('处理失败：' || sqlerrm);
 end handle_overtime_violation;
 /
+
 
 --当修改为overtime时使用触发器调用过程
 create or replace trigger trg_update_overtime after
@@ -420,7 +465,6 @@ begin
 end trg_update_overtime;
 /
 
---completed对应过程
 create or replace procedure handle_completed_appointment (
    p_appointment_id in number
 ) as
@@ -457,15 +501,27 @@ begin
               10,
               ( systimestamp + interval '8' hour ),
               '预约签到' );
-    
+
+    -- 5. 插入一条通知
+   insert into notification (
+      notification_id,
+      user_id,
+      content,
+      isread
+   ) values ( notification_id_seq.nextval,
+              v_user_id,
+              '恭喜您成功完成一次预约！',
+              0 );
+
     -- 输出成功信息
-   dbms_output.put_line('处理完成，预约已变为 completed，用户积分增加 10 分');
+   dbms_output.put_line('处理完成，预约已变为 completed，用户积分增加 10 分，并发送通知');
 exception
    when others then
-        -- 错误处理
+      -- 错误处理
       dbms_output.put_line('处理失败：' || sqlerrm);
 end handle_completed_appointment;
 /
+
 
 
 --当修改为completed使用触发器调用过程

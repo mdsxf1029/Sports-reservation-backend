@@ -33,7 +33,7 @@ public class Post
     public string? PostStatus { get; set; }
 
     [Column("COMMENT_COUNT")]
-    [SwaggerSchema("阅读量")]
+    [SwaggerSchema("评论量")]
     public int? CommentCount { get; set; }
 
     [Column("COLLECTION_COUNT")]
