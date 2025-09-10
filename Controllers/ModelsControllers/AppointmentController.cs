@@ -4,6 +4,7 @@ using Microsoft.EntityFrameworkCore;
 using Sports_reservation_backend.Data;
 using Sports_reservation_backend.Models.RequestModels;
 using Sports_reservation_backend.Models.TableModels;
+using Swashbuckle.AspNetCore.Annotations;
 
 namespace Sports_reservation_backend.Controllers
 {
@@ -308,6 +309,82 @@ namespace Sports_reservation_backend.Controllers
             {
                 _logger.LogError(ex, "取消预约失败");
                 return Ok(new { success = false, message = "服务器错误，取消失败" });
+            }
+        }
+
+        [HttpPost("{appointmentId:int}/appeal")]
+        public async Task<IActionResult> CreateAppeal(
+            int appointmentId,
+            [FromBody] AppealCreateRequest request
+        )
+        {
+            try
+            {
+                // 1. 检查 appointment 是否存在
+                var appointment = await _db.UserAppointmentSet.FirstOrDefaultAsync(a =>
+                    a.AppointmentId == appointmentId
+                );
+
+                if (appointment == null)
+                {
+                    return NotFound(
+                        new { success = false, message = $"未找到预约记录 ID: {appointmentId}" }
+                    );
+                }
+
+                // 2. 根据 appointmentId 找 violation
+                var violation = await _db.ViolationSet.FirstOrDefaultAsync(v =>
+                    v.AppointmentId == appointmentId
+                );
+
+                if (violation == null)
+                {
+                    return BadRequest(
+                        new
+                        {
+                            success = false,
+                            message = $"预约 ID {appointmentId} 没有对应的违约记录，无法申诉",
+                        }
+                    );
+                }
+
+                // 3. 检查 user 是否存在
+                var user = await _db.UserSet.FirstOrDefaultAsync(u => u.UserId == request.UserId);
+
+                if (user == null)
+                {
+                    return NotFound(
+                        new { success = false, message = $"未找到用户 ID: {request.UserId}" }
+                    );
+                }
+
+                // 4. 构建 Appeal 实体
+                var appeal = new Appeal
+                {
+                    ViolationId = violation.ViolationId,
+                    UserId = request.UserId,
+                    AppealReason = request.AppealReason,
+                    EvidenceUrl = null,
+                    AppealTime = DateTime.UtcNow.AddHours(8),
+                    AppealStatus = "pending",
+                    ProcessorId = null,
+                    ProcessTime = null,
+                    RejectReason = null,
+                };
+
+                // 5. 插入数据库
+                await _db.AppealSet.AddAsync(appeal);
+                await _db.SaveChangesAsync();
+
+                // 6. 返回前端指定格式
+                return Ok(new { success = true, message = "订单申诉已提交，将在三个工作日内反馈" });
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(
+                    500,
+                    new { success = false, message = $"服务器内部错误: {ex.Message}" }
+                );
             }
         }
     }
