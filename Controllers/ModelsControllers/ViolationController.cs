@@ -19,14 +19,22 @@ public class ViolationController : ControllerBase
         _logger = logger;
     }
 
-    [HttpGet]
-    public async Task<IActionResult> GetViolationList()
+    [HttpGet("violation-list")]
+    public async Task<IActionResult> GetViolationList(
+        int page = 1,
+        int pageSize = 10,
+        string keyword = null
+    )
     {
         try
         {
-            var now = DateTime.UtcNow.AddHours(8);
+            if (page <= 0)
+                page = 1;
+            if (pageSize <= 0)
+                pageSize = 10;
 
-            var violations = await (
+            // 1. 基础查询
+            var query =
                 from v in _db.ViolationSet
                 join uv in _db.UserViolationSet on v.ViolationId equals uv.ViolationId
                 join u in _db.UserSet on uv.UserId equals u.UserId
@@ -35,33 +43,75 @@ public class ViolationController : ControllerBase
                 join ve in _db.VenueSet on va.VenueId equals ve.VenueId
                 select new
                 {
-                    id = v.ViolationId,
-                    userName = u.UserName,
-                    userId = u.UserId,
-                    violationReason = v.ViolationReason,
-                    venue = ve.VenueName,
-                    timeSlot = a.BeginTime.HasValue && a.EndTime.HasValue
-                        ? $"{a.BeginTime.Value:HH:mm}-{a.EndTime.Value:HH:mm}"
-                        : "",
-                    violationDate = v.ViolationTime.HasValue
-                        ? v.ViolationTime.Value.ToString("yyyy-MM-dd")
-                        : "",
-                    // 判断该用户是否有任意有效黑名单
-                    isBlacklisted = _db.BlacklistSet.Any(bl =>
+                    v.ViolationId,
+                    u.UserName,
+                    u.UserId,
+                    v.ViolationReason,
+                    ve.VenueName,
+                    a.BeginTime,
+                    a.EndTime,
+                    v.ViolationTime,
+                    // 是否有任意有效黑名单
+                    IsBlacklisted = _db.BlacklistSet.Any(bl =>
                         bl.UserId == u.UserId && bl.BannedStatus == "valid"
                     ),
-                    // 最新一条有效黑名单的开始时间
-                    blacklistTimestamp = _db
+                    // 最新一条有效黑名单开始时间
+                    BlacklistTimestamp = _db
                         .BlacklistSet.Where(bl =>
                             bl.UserId == u.UserId && bl.BannedStatus == "valid"
                         )
                         .OrderByDescending(bl => bl.BeginTime)
                         .Select(bl => (DateTime?)bl.BeginTime)
                         .FirstOrDefault(),
-                }
-            ).ToListAsync();
+                };
 
-            return Ok(new { success = true, data = violations });
+            // 2. 关键字搜索
+            if (!string.IsNullOrWhiteSpace(keyword))
+            {
+                query = query.Where(q =>
+                    q.UserName.Contains(keyword) || q.UserId.ToString().Contains(keyword)
+                );
+            }
+
+            // 3. 总记录数
+            var totalCount = await query.CountAsync();
+
+            // 4. 分页并按违约时间降序
+            var list = await query
+                .OrderByDescending(q => q.ViolationTime)
+                .Skip((page - 1) * pageSize)
+                .Take(pageSize)
+                .ToListAsync();
+
+            // 5. 内存中格式化输出
+            var violations = list.Select(v => new
+                {
+                    id = v.ViolationId,
+                    userName = v.UserName,
+                    userId = v.UserId,
+                    violationReason = v.ViolationReason,
+                    venue = v.VenueName,
+                    timeSlot = v.BeginTime.HasValue && v.EndTime.HasValue
+                        ? $"{v.BeginTime.Value:HH:mm}-{v.EndTime.Value:HH:mm}"
+                        : "",
+                    violationDate = v.ViolationTime?.ToString("yyyy-MM-dd"),
+                    isBlacklisted = v.IsBlacklisted,
+                    blacklistTimestamp = v.BlacklistTimestamp,
+                })
+                .ToList();
+
+            // 6. 返回
+            return Ok(
+                new
+                {
+                    success = true,
+                    page,
+                    pageSize,
+                    totalCount,
+                    totalPages = (int)Math.Ceiling((double)totalCount / pageSize),
+                    data = violations,
+                }
+            );
         }
         catch (Exception ex)
         {
