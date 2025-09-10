@@ -33,10 +33,6 @@ public class ViolationController : ControllerBase
                 join a in _db.AppointmentSet on v.AppointmentId equals a.AppointmentId
                 join va in _db.VenueAppointmentSet on a.AppointmentId equals va.AppointmentId
                 join ve in _db.VenueSet on va.VenueId equals ve.VenueId
-                join b in _db.BlacklistSet.Where(bl => bl.BannedStatus == "valid")
-                    on u.UserId equals b.UserId
-                    into blGroup
-                from b2 in blGroup.DefaultIfEmpty() // 左连接，可能没有有效黑名单
                 select new
                 {
                     id = v.ViolationId,
@@ -50,8 +46,18 @@ public class ViolationController : ControllerBase
                     violationDate = v.ViolationTime.HasValue
                         ? v.ViolationTime.Value.ToString("yyyy-MM-dd")
                         : "",
-                    isBlacklisted = b2 != null,
-                    blacklistTimestamp = b2 != null ? (DateTime?)b2.BeginTime : null,
+                    // 判断该用户是否有任意有效黑名单
+                    isBlacklisted = _db.BlacklistSet.Any(bl =>
+                        bl.UserId == u.UserId && bl.BannedStatus == "valid"
+                    ),
+                    // 最新一条有效黑名单的开始时间
+                    blacklistTimestamp = _db
+                        .BlacklistSet.Where(bl =>
+                            bl.UserId == u.UserId && bl.BannedStatus == "valid"
+                        )
+                        .OrderByDescending(bl => bl.BeginTime)
+                        .Select(bl => (DateTime?)bl.BeginTime)
+                        .FirstOrDefault(),
                 }
             ).ToListAsync();
 
@@ -78,16 +84,18 @@ public class ViolationController : ControllerBase
             if (appointment == null)
                 return BadRequest(new { success = false, message = "预约不存在" });
 
+            var now = DateTime.UtcNow.AddHours(8);
+
             // 2. 创建违约记录
             var violation = new Violation
             {
                 AppointmentId = request.AppointmentId,
                 ViolationReason = request.ViolationReason,
                 ViolationPenalty = request.ViolationPenalty,
-                ViolationTime = DateTime.UtcNow.AddHours(8),
+                ViolationTime = now,
             };
             _db.ViolationSet.Add(violation);
-            await _db.SaveChangesAsync(); // 获取 violation_id
+            await _db.SaveChangesAsync(); // 保存后获取 ViolationId
 
             // 3. 创建 user_violation 关联
             var userViolation = new UserViolation
@@ -96,7 +104,6 @@ public class ViolationController : ControllerBase
                 ViolationId = violation.ViolationId,
             };
             _db.UserViolationSet.Add(userViolation);
-            await _db.SaveChangesAsync();
 
             // 4. 查询场地信息
             var venueName = await (
@@ -106,13 +113,15 @@ public class ViolationController : ControllerBase
                 select ve.VenueName
             ).FirstOrDefaultAsync();
 
-            // 5. 查询是否在黑名单
-            var now = DateTime.UtcNow.AddHours(8);
-            var blacklist = await _db
-                .BlacklistSet.Where(b => b.UserId == request.UserId && b.BannedStatus == "valid")
-                .FirstOrDefaultAsync();
+            // 5. 查询是否在有效黑名单
+            bool isBlacklisted = await _db.BlacklistSet.AnyAsync(b =>
+                b.UserId == request.UserId && b.BannedStatus == "valid"
+            );
 
-            // 6. 返回结果
+            // 6. 保存 user_violation
+            await _db.SaveChangesAsync();
+
+            // 7. 构造返回结果
             var result = new
             {
                 id = violation.ViolationId,
@@ -124,8 +133,7 @@ public class ViolationController : ControllerBase
                     ? $"{appointment.BeginTime.Value:HH:mm}-{appointment.EndTime.Value:HH:mm}"
                     : "",
                 violationDate = violation.ViolationTime?.ToString("yyyy-MM-dd"),
-                isBlacklisted = blacklist != null,
-                blacklistTimestamp = blacklist?.BeginTime,
+                isBlacklisted = isBlacklisted,
             };
 
             return Ok(
