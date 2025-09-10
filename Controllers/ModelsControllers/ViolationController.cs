@@ -102,6 +102,7 @@ public class ViolationController : ControllerBase
             var todayCount = await _db.ViolationSet.CountAsync(v =>
                 v.ViolationTime.HasValue && v.ViolationTime.Value.Date == today
             );
+            var allAppointmentCount = await _db.AppointmentSet.CountAsync();
 
             // 4. 总记录数（筛选后的）
             var totalCount = await query.CountAsync();
@@ -140,6 +141,7 @@ public class ViolationController : ControllerBase
                     totalCount,
                     totalPages = (int)Math.Ceiling((double)totalCount / pageSize),
                     allViolationCount,
+                    allAppointmentCount,
                     userCount,
                     todayCount,
                     data = violations,
