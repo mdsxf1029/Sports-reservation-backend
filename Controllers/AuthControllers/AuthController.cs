@@ -1,3 +1,6 @@
+using System.IdentityModel.Tokens.Jwt;
+using System.Security.Claims;
+using System.Text;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
@@ -5,9 +8,6 @@ using Microsoft.IdentityModel.Tokens;
 using Sports_reservation_backend.Data;
 using Sports_reservation_backend.Models.RequestModels;
 using Sports_reservation_backend.Models.TableModels;
-using System.IdentityModel.Tokens.Jwt;
-using System.Security.Claims;
-using System.Text;
 
 namespace Sports_reservation_backend.Controllers.AuthControllers
 {
@@ -19,7 +19,11 @@ namespace Sports_reservation_backend.Controllers.AuthControllers
         private readonly ILogger<AuthController> _logger;
         private readonly IConfiguration _config;
 
-        public AuthController(OracleDbContext db, ILogger<AuthController> logger, IConfiguration config)
+        public AuthController(
+            OracleDbContext db,
+            ILogger<AuthController> logger,
+            IConfiguration config
+        )
         {
             _db = db;
             _logger = logger;
@@ -48,17 +52,29 @@ namespace Sports_reservation_backend.Controllers.AuthControllers
                     AvatarUrl = request.AvatarUrl,
                     Region = request.Region,
                     Profile = request.Profile,
-                    Role = request.Role
+                    Role = request.Role,
                 };
 
                 _db.UserSet.Add(user);
+                await _db.SaveChangesAsync(); // 保存用户，获取 userId
+
+                // 在注册成功后新增一条通知
+                var notification = new Notification
+                {
+                    UserId = user.UserId,
+                    Content = "欢迎您来到运动预约系统！",
+                    IsRead = 0,
+                };
+
+                _db.NotificationSet.Add(notification);
                 await _db.SaveChangesAsync();
 
-                return Ok(ApiResponse<object>.Success(new
-                {
-                    userId = user.UserId,
-                    userName = user.UserName
-                }, "注册成功"));
+                return Ok(
+                    ApiResponse<object>.Success(
+                        new { userId = user.UserId, userName = user.UserName },
+                        "注册成功"
+                    )
+                );
             }
             catch (Exception ex)
             {
@@ -89,7 +105,7 @@ namespace Sports_reservation_backend.Controllers.AuthControllers
                     new Claim("userId", user.UserId.ToString()),
                     new Claim(ClaimTypes.Name, user.UserName),
                     new Claim(ClaimTypes.Email, user.Email),
-                    new Claim(ClaimTypes.Role, user.Role)
+                    new Claim(ClaimTypes.Role, user.Role),
                 };
 
                 var tokenDescriptor = new SecurityTokenDescriptor
@@ -98,7 +114,10 @@ namespace Sports_reservation_backend.Controllers.AuthControllers
                     Expires = DateTime.UtcNow.AddHours(8),
                     Issuer = jwtIssuer,
                     Audience = jwtAudience,
-                    SigningCredentials = new SigningCredentials(key, SecurityAlgorithms.HmacSha256Signature)
+                    SigningCredentials = new SigningCredentials(
+                        key,
+                        SecurityAlgorithms.HmacSha256Signature
+                    ),
                 };
 
                 var tokenHandler = new JwtSecurityTokenHandler();
@@ -106,13 +125,18 @@ namespace Sports_reservation_backend.Controllers.AuthControllers
                 var tokenString = tokenHandler.WriteToken(token);
                 var expires = ((DateTimeOffset)tokenDescriptor.Expires!).ToUnixTimeSeconds();
 
-                return Ok(ApiResponse<object>.Success(new
-                {
-                    userId = user.UserId,
-                    userName = user.UserName,
-                    token = tokenString,
-                    expires = expires
-                }, "账号登陆成功"));
+                return Ok(
+                    ApiResponse<object>.Success(
+                        new
+                        {
+                            userId = user.UserId,
+                            userName = user.UserName,
+                            token = tokenString,
+                            expires = expires,
+                        },
+                        "账号登陆成功"
+                    )
+                );
             }
             catch (Exception ex)
             {

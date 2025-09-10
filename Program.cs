@@ -130,11 +130,11 @@ app.UseSwaggerUI(c => // 启用swaggerUI
 
 app.UseStaticFiles(); // 这行必须有
 
-var uploadsPath = Path.Combine(Directory.GetCurrentDirectory(), "uploads");
+var wwwrootPath = Path.Combine(env.WebRootPath, "uploads");
 
-if (!Directory.Exists(uploadsPath))
+if (!Directory.Exists(wwwrootPath))
 {
-    Directory.CreateDirectory(uploadsPath);  // 如果 uploads 文件夹不存在，就创建它
+    Directory.CreateDirectory(wwwrootPath);
 }
 
 app.UseStaticFiles(new StaticFileOptions

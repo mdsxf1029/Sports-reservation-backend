@@ -273,19 +273,26 @@ create table appeal (
 
 create table news (
   --新闻id
-  news_id        number primary key,
+   news_id       number primary key,
   --新闻类型
-  news_category  varchar(64) check ( news_category in ('match-report', 'announcement', 'commentary', 'interview', 'off-the-field')),
+   news_category varchar(64) check ( news_category in ( 'match-report',
+                                                        'announcement',
+                                                        'commentary',
+                                                        'interview',
+                                                        'off-the-field' ) ),
   --新闻标题
-  news_title     varchar(128),
+   news_title    varchar(128),
   --新闻内容
-  news_content   clob not null,
+   news_content  clob not null,
   --新闻状态
-  news_status    varchar(64) check ( news_status in ('draft', 'published', 'updated', 'deleted')),
+   news_status   varchar(64) check ( news_status in ( 'draft',
+                                                    'published',
+                                                    'updated',
+                                                    'deleted' ) ),
   --发表时间
-  news_time      date not null,
+   news_time     date not null,
   --封面图片
-  cover_Url      varchar(256)
+   cover_url     varchar(256)
 )
 
 ------------------------------------------------------------------------------------------------------------------------------------------------------
