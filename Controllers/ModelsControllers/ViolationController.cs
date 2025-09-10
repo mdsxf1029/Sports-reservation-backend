@@ -23,7 +23,8 @@ public class ViolationController : ControllerBase
     public async Task<IActionResult> GetViolationList(
         int page = 1,
         int pageSize = 10,
-        string keyword = null
+        string keyword = null,
+        [FromQuery] List<string> dateRange = null
     )
     {
         try
@@ -73,17 +74,46 @@ public class ViolationController : ControllerBase
                 );
             }
 
-            // 3. 总记录数
+            // 3. 时间范围筛选
+            if (dateRange != null && dateRange.Count == 2)
+            {
+                if (
+                    DateTime.TryParse(dateRange[0], out var start)
+                    && DateTime.TryParse(dateRange[1], out var end)
+                )
+                {
+                    end = end.Date.AddDays(1).AddTicks(-1); // 包含结束日
+                    query = query.Where(q => q.ViolationTime >= start && q.ViolationTime <= end);
+                }
+            }
+
+            // ======= 统计值 =======
+            var allViolationCount = await _db.ViolationSet.CountAsync();
+
+            var userCount = await (
+                from v in _db.ViolationSet
+                join uv in _db.UserViolationSet on v.ViolationId equals uv.ViolationId
+                select uv.UserId
+            )
+                .Distinct()
+                .CountAsync();
+
+            var today = DateTime.UtcNow.AddHours(8).Date; // 东八区当天
+            var todayCount = await _db.ViolationSet.CountAsync(v =>
+                v.ViolationTime.HasValue && v.ViolationTime.Value.Date == today
+            );
+
+            // 4. 总记录数（筛选后的）
             var totalCount = await query.CountAsync();
 
-            // 4. 分页并按违约时间降序
+            // 5. 分页并按违约时间降序
             var list = await query
                 .OrderByDescending(q => q.ViolationTime)
                 .Skip((page - 1) * pageSize)
                 .Take(pageSize)
                 .ToListAsync();
 
-            // 5. 内存中格式化输出
+            // 6. 内存中格式化输出
             var violations = list.Select(v => new
                 {
                     id = v.ViolationId,
@@ -100,7 +130,7 @@ public class ViolationController : ControllerBase
                 })
                 .ToList();
 
-            // 6. 返回
+            // 7. 返回
             return Ok(
                 new
                 {
@@ -109,6 +139,9 @@ public class ViolationController : ControllerBase
                     pageSize,
                     totalCount,
                     totalPages = (int)Math.Ceiling((double)totalCount / pageSize),
+                    allViolationCount,
+                    userCount,
+                    todayCount,
                     data = violations,
                 }
             );
