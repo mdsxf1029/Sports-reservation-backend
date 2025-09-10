@@ -1,3 +1,4 @@
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Sports_reservation_backend.Data;
@@ -139,6 +140,229 @@ namespace Sports_reservation_backend.Controllers
                         success = false,
                         data = (object?)null,
                         message = "添加用户到黑名单失败",
+                    }
+                );
+            }
+        }
+
+        [Authorize]
+        [HttpPost("remove")]
+        public async Task<IActionResult> RemoveFromBlacklist(
+            [FromBody] RemoveBlacklistRequest request
+        )
+        {
+            try
+            {
+                if (request == null || request.UserId <= 0 || request.BeginTime == default)
+                    return Ok(
+                        new
+                        {
+                            code = 1,
+                            msg = "请求参数不合法",
+                            data = (object?)null,
+                        }
+                    );
+
+                // 1. 查找用户
+                var user = await _db.UserSet.FindAsync(request.UserId);
+                if (user == null)
+                    return Ok(
+                        new
+                        {
+                            code = 1,
+                            msg = "用户不存在或不在黑名单中",
+                            data = (object?)null,
+                        }
+                    );
+
+                // 2. 查找对应黑名单记录（根据 userId + beginTime + BannedStatus=valid）
+                var blacklist = await _db.BlacklistSet.FirstOrDefaultAsync(b =>
+                    b.UserId == request.UserId
+                    && b.BeginTime == request.BeginTime
+                    && b.BannedStatus == "valid"
+                );
+
+                if (blacklist == null)
+                    return Ok(
+                        new
+                        {
+                            code = 1,
+                            msg = "用户不存在或不在黑名单中",
+                            data = (object?)null,
+                        }
+                    );
+
+                // 3. 移除黑名单（改状态为 invalid 或者删除）
+                blacklist.BannedStatus = "invalid";
+                blacklist.EndTime = DateTime.UtcNow.AddHours(8);
+
+                await _db.SaveChangesAsync();
+
+                // 4. 返回结果
+                return Ok(
+                    new
+                    {
+                        code = 0,
+                        msg = "用户已从黑名单移除",
+                        data = new { userId = user.UserId, userName = user.UserName },
+                    }
+                );
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "移除黑名单失败");
+                return Ok(
+                    new
+                    {
+                        code = 1,
+                        msg = "操作失败，请稍后重试",
+                        data = (object?)null,
+                    }
+                );
+            }
+        }
+
+        [Authorize]
+        [HttpPost("batch-remove")]
+        public async Task<IActionResult> BatchRemoveFromBlacklist(
+            [FromBody] BatchRemoveBlacklistRequest request
+        )
+        {
+            if (request?.BlacklistItems == null || !request.BlacklistItems.Any())
+                return Ok(
+                    new
+                    {
+                        code = 1002,
+                        msg = "所有用户移除失败",
+                        data = new
+                        {
+                            removedCount = 0,
+                            removedUsers = new object[] { },
+                            failedUsers = new object[] { },
+                        },
+                    }
+                );
+
+            var removedUsers = new List<object>();
+            var failedUsers = new List<object>();
+            var now = DateTime.UtcNow.AddHours(8);
+
+            try
+            {
+                foreach (var item in request.BlacklistItems)
+                {
+                    // 查找用户
+                    var user = await _db.UserSet.FindAsync(item.UserId);
+                    if (user == null)
+                    {
+                        failedUsers.Add(
+                            new
+                            {
+                                userId = item.UserId,
+                                userName = "未知",
+                                beginTime = item.BeginTime,
+                                reason = "用户不存在",
+                            }
+                        );
+                        continue;
+                    }
+
+                    // 查找对应黑名单
+                    var blacklist = await _db.BlacklistSet.FirstOrDefaultAsync(b =>
+                        b.UserId == item.UserId
+                        && b.BeginTime == item.BeginTime
+                        && b.BannedStatus == "valid"
+                    );
+
+                    if (blacklist == null)
+                    {
+                        failedUsers.Add(
+                            new
+                            {
+                                userId = user.UserId,
+                                userName = user.UserName,
+                                beginTime = item.BeginTime,
+                                reason = "用户不在黑名单中或时间不匹配",
+                            }
+                        );
+                        continue;
+                    }
+
+                    // 移除黑名单
+                    blacklist.BannedStatus = "invalid";
+                    blacklist.EndTime = now;
+
+                    removedUsers.Add(
+                        new
+                        {
+                            userId = user.UserId,
+                            userName = user.UserName,
+                            beginTime = item.BeginTime,
+                        }
+                    );
+                }
+
+                // 保存数据库
+                await _db.SaveChangesAsync();
+
+                // 返回结果
+                if (removedUsers.Count == request.BlacklistItems.Count)
+                {
+                    return Ok(
+                        new
+                        {
+                            code = 0,
+                            msg = "批量移除成功",
+                            data = new
+                            {
+                                removedCount = removedUsers.Count,
+                                removedUsers = removedUsers,
+                            },
+                        }
+                    );
+                }
+                else if (removedUsers.Count > 0)
+                {
+                    return Ok(
+                        new
+                        {
+                            code = 1001,
+                            msg = "部分用户移除失败",
+                            data = new
+                            {
+                                removedCount = removedUsers.Count,
+                                removedUsers = removedUsers,
+                                failedUsers = failedUsers,
+                            },
+                        }
+                    );
+                }
+                else
+                {
+                    return Ok(
+                        new
+                        {
+                            code = 1002,
+                            msg = "所有用户移除失败",
+                            data = new
+                            {
+                                removedCount = 0,
+                                removedUsers = new object[] { },
+                                failedUsers = failedUsers,
+                            },
+                        }
+                    );
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "批量移除黑名单失败");
+                return Ok(
+                    new
+                    {
+                        code = 1003,
+                        msg = "服务器内部错误",
+                        data = (object?)null,
                     }
                 );
             }
