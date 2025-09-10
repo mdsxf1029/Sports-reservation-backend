@@ -394,25 +394,73 @@ public class AppealController : ControllerBase
             if (appeal.AppealStatus != "pending")
                 return Ok(new { code = 400, message = "该申诉已处理，无法再次审核" });
 
+            string notificationContent = "";
+
             // 3. 根据 Action 更新状态
             if (request.Action == "approve")
             {
                 appeal.AppealStatus = "approved";
                 appeal.ProcessorId = adminId;
-                appeal.ProcessTime = DateTime.Now;
-                appeal.RejectReason = null; // 审核通过无需拒绝理由
+                appeal.ProcessTime = DateTime.UtcNow.AddHours(8);
+                appeal.RejectReason = null;
+
+                // 1. 给用户加积分
+                var user = await _db.UserSet.FirstOrDefaultAsync(u => u.UserId == appeal.UserId);
+                if (user != null)
+                {
+                    user.Points += 10;
+                }
+
+                // 2. 将 appointment 状态改成 "completed"
+                if (appeal.Violation != null)
+                {
+                    var appointment = await _db.AppointmentSet.FirstOrDefaultAsync(a =>
+                        a.AppointmentId == appeal.Violation.AppointmentId
+                    );
+
+                    if (appointment != null)
+                    {
+                        appointment.AppointmentStatus = "completed";
+                    }
+                }
+
+                // 3. 插入 point_change 记录
+                var pointChange = new PointChange
+                {
+                    UserId = appeal.UserId,
+                    ChangeAmount = 10,
+                    ChangeTime = DateTime.UtcNow.AddHours(8),
+                    ChangeReason = "申诉成功补偿",
+                };
+                await _db.PointChangeSet.AddAsync(pointChange);
+
+                // 4. 审核通过通知
+                notificationContent = "您的申诉已被管理员接受，积分+10";
             }
             else if (request.Action == "reject")
             {
                 appeal.AppealStatus = "rejected";
                 appeal.ProcessorId = adminId;
-                appeal.ProcessTime = DateTime.Now;
+                appeal.ProcessTime = DateTime.UtcNow.AddHours(8);
                 appeal.RejectReason = request.RejectReason;
+
+                // 审核拒绝通知
+                notificationContent = $"您的申诉被管理员拒绝，理由: {request.RejectReason}";
             }
             else
             {
                 return Ok(new { code = 400, message = "Action 必须为 approve 或 reject" });
             }
+
+            // 插入通知（去掉 Title，用 int? IsRead）
+            var notification = new Notification
+            {
+                UserId = appeal.UserId,
+                Content = notificationContent,
+                CreateTime = DateTime.UtcNow.AddHours(8),
+                IsRead = 0, // 0 表示未读
+            };
+            await _db.NotificationSet.AddAsync(notification);
 
             // 4. 保存事务
             await _db.SaveChangesAsync();

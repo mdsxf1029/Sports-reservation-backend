@@ -8,7 +8,7 @@ begin
    :new.news_id := news_id_seq.nextval;
 end;
 
---自动调整注册时间
+--自动调整新闻创建时间
 create or replace trigger set_news_time before
    insert on news
    for each row
