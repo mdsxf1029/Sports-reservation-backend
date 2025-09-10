@@ -1,8 +1,9 @@
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Sports_reservation_backend.Data;
-using Sports_reservation_backend.Models.TableModels;
 using Sports_reservation_backend.Models.RequestModels;
+using Sports_reservation_backend.Models.TableModels;
+
 namespace Sports_reservation_backend.Controllers;
 
 [ApiController]
@@ -17,6 +18,7 @@ public class ViolationController : ControllerBase
         _db = db;
         _logger = logger;
     }
+
     [HttpGet]
     public async Task<IActionResult> GetViolationList()
     {
@@ -32,7 +34,8 @@ public class ViolationController : ControllerBase
                 join va in _db.VenueAppointmentSet on a.AppointmentId equals va.AppointmentId
                 join ve in _db.VenueSet on va.VenueId equals ve.VenueId
                 join b in _db.BlacklistSet.Where(bl => bl.BannedStatus == "valid")
-                     on u.UserId equals b.UserId into blGroup
+                    on u.UserId equals b.UserId
+                    into blGroup
                 from b2 in blGroup.DefaultIfEmpty() // 左连接，可能没有有效黑名单
                 select new
                 {
@@ -44,26 +47,20 @@ public class ViolationController : ControllerBase
                     timeSlot = a.BeginTime.HasValue && a.EndTime.HasValue
                         ? $"{a.BeginTime.Value:HH:mm}-{a.EndTime.Value:HH:mm}"
                         : "",
-                    violationDate = v.ViolationTime.HasValue ? v.ViolationTime.Value.ToString("yyyy-MM-dd") : "",
+                    violationDate = v.ViolationTime.HasValue
+                        ? v.ViolationTime.Value.ToString("yyyy-MM-dd")
+                        : "",
                     isBlacklisted = b2 != null,
-                    blacklistTimestamp = b2 != null ? (DateTime?)b2.BeginTime : null
+                    blacklistTimestamp = b2 != null ? (DateTime?)b2.BeginTime : null,
                 }
             ).ToListAsync();
 
-            return Ok(new
-            {
-                success = true,
-                data = violations
-            });
+            return Ok(new { success = true, data = violations });
         }
         catch (Exception ex)
         {
             _logger.LogError(ex, "获取违约记录列表失败");
-            return Ok(new
-            {
-                success = false,
-                data = new object[] { }
-            });
+            return Ok(new { success = false, data = new object[] { } });
         }
     }
 
@@ -74,10 +71,12 @@ public class ViolationController : ControllerBase
         {
             // 1. 查找用户和预约
             var user = await _db.UserSet.FindAsync(request.UserId);
-            if (user == null) return BadRequest(new { success = false, message = "用户不存在" });
+            if (user == null)
+                return BadRequest(new { success = false, message = "用户不存在" });
 
             var appointment = await _db.AppointmentSet.FindAsync(request.AppointmentId);
-            if (appointment == null) return BadRequest(new { success = false, message = "预约不存在" });
+            if (appointment == null)
+                return BadRequest(new { success = false, message = "预约不存在" });
 
             // 2. 创建违约记录
             var violation = new Violation
@@ -85,7 +84,7 @@ public class ViolationController : ControllerBase
                 AppointmentId = request.AppointmentId,
                 ViolationReason = request.ViolationReason,
                 ViolationPenalty = request.ViolationPenalty,
-                ViolationTime = DateTime.UtcNow.AddHours(8)
+                ViolationTime = DateTime.UtcNow.AddHours(8),
             };
             _db.ViolationSet.Add(violation);
             await _db.SaveChangesAsync(); // 获取 violation_id
@@ -94,7 +93,7 @@ public class ViolationController : ControllerBase
             var userViolation = new UserViolation
             {
                 UserId = request.UserId,
-                ViolationId = violation.ViolationId
+                ViolationId = violation.ViolationId,
             };
             _db.UserViolationSet.Add(userViolation);
             await _db.SaveChangesAsync();
@@ -109,9 +108,8 @@ public class ViolationController : ControllerBase
 
             // 5. 查询是否在黑名单
             var now = DateTime.UtcNow.AddHours(8);
-            var blacklist = await _db.BlacklistSet
-                .Where(b => b.UserId == request.UserId
-                            && b.BannedStatus == "valid")
+            var blacklist = await _db
+                .BlacklistSet.Where(b => b.UserId == request.UserId && b.BannedStatus == "valid")
                 .FirstOrDefaultAsync();
 
             // 6. 返回结果
@@ -127,26 +125,29 @@ public class ViolationController : ControllerBase
                     : "",
                 violationDate = violation.ViolationTime?.ToString("yyyy-MM-dd"),
                 isBlacklisted = blacklist != null,
-                blacklistTimestamp = blacklist?.BeginTime
+                blacklistTimestamp = blacklist?.BeginTime,
             };
 
-            return Ok(new
-            {
-                success = true,
-                data = result,
-                message = "创建违约记录成功"
-            });
+            return Ok(
+                new
+                {
+                    success = true,
+                    data = result,
+                    message = "创建违约记录成功",
+                }
+            );
         }
         catch (Exception ex)
         {
             _logger.LogError(ex, "添加违约记录失败");
-            return Ok(new
-            {
-                success = false,
-                message = "添加违约记录失败",
-                data = (object?)null
-            });
+            return Ok(
+                new
+                {
+                    success = false,
+                    message = "添加违约记录失败",
+                    data = (object?)null,
+                }
+            );
         }
     }
-
 }

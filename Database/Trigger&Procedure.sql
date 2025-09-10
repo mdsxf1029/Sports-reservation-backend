@@ -8,6 +8,14 @@ begin
    :new.news_id := news_id_seq.nextval;
 end;
 
+--自动调整新闻创建时间
+create or replace trigger set_news_time before
+   insert on news
+   for each row
+begin
+   :new.news_time := ( systimestamp + interval '8' hour );
+end;
+/
 
 
 -- 创建 sequence 用于 comment_report_handle_id 自增
