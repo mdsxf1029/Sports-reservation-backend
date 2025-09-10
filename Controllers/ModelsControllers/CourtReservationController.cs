@@ -1,10 +1,9 @@
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Sports_reservation_backend.Data;
-using Sports_reservation_backend.Models.TableModels;
 using Sports_reservation_backend.Models.RequestModels;
-using Microsoft.AspNetCore.Authorization;
-
+using Sports_reservation_backend.Models.TableModels;
 
 namespace Sports_reservation_backend.Controllers
 {
@@ -15,7 +14,10 @@ namespace Sports_reservation_backend.Controllers
         private readonly OracleDbContext _db;
         private readonly ILogger<CourtReservationController> _logger;
 
-        public CourtReservationController(OracleDbContext db, ILogger<CourtReservationController> logger)
+        public CourtReservationController(
+            OracleDbContext db,
+            ILogger<CourtReservationController> logger
+        )
         {
             _db = db;
             _logger = logger;
@@ -30,31 +32,27 @@ namespace Sports_reservation_backend.Controllers
         {
             try
             {
-                var slots = await _db.TimeSlotSet
-                    .AsNoTracking()
+                var slots = await _db
+                    .TimeSlotSet.AsNoTracking()
                     .OrderBy(ts => ts.BeginTime)
                     .Select(ts => new
                     {
                         time_slot_id = ts.TimeSlotId,
-                        begin_time = ts.BeginTime.HasValue ? ts.BeginTime.Value.ToString("yyyy/MM/dd HH:mm") : "",
-                        end_time = ts.EndTime.HasValue ? ts.EndTime.Value.ToString("yyyy/MM/dd HH:mm") : ""
+                        begin_time = ts.BeginTime.HasValue
+                            ? ts.BeginTime.Value.ToString("yyyy/MM/dd HH:mm")
+                            : "",
+                        end_time = ts.EndTime.HasValue
+                            ? ts.EndTime.Value.ToString("yyyy/MM/dd HH:mm")
+                            : "",
                     })
                     .ToListAsync();
 
-                return Ok(new
-                {
-                    success = true,
-                    slots
-                });
+                return Ok(new { success = true, slots });
             }
             catch (Exception ex)
             {
                 _logger.LogError(ex, "获取时间段失败");
-                return Ok(new
-                {
-                    success = false,
-                    slots = new object[] { }
-                });
+                return Ok(new { success = false, slots = new object[] { } });
             }
         }
 
@@ -69,44 +67,46 @@ namespace Sports_reservation_backend.Controllers
             {
                 if (!DateTime.TryParse(date, out DateTime targetDate))
                 {
-                    return Ok(new
-                    {
-                        success = false,
-                        locked = new object[] { },
-                        msg = "日期格式错误"
-                    });
+                    return Ok(
+                        new
+                        {
+                            success = false,
+                            locked = new object[] { },
+                            msg = "日期格式错误",
+                        }
+                    );
                 }
 
                 // 查询指定日期锁定（busy）的场地时间段
-                var locked = await _db.VenueTimeSlotSet
-                    .Include(vts => vts.Venue)
+                var locked = await _db
+                    .VenueTimeSlotSet.Include(vts => vts.Venue)
                     .Include(vts => vts.TimeSlot)
-                    .Where(vts => vts.TimeSlotStatus == "busy"
-                                  && vts.TimeSlot.BeginTime.HasValue
-                                  && vts.TimeSlot.BeginTime.Value.Date == targetDate.Date)
+                    .Where(vts =>
+                        vts.TimeSlotStatus == "busy"
+                        && vts.TimeSlot.BeginTime.HasValue
+                        && vts.TimeSlot.BeginTime.Value.Date == targetDate.Date
+                    )
                     .Select(vts => new
                     {
                         venue_id = vts.VenueId,
                         venue_subname = vts.Venue != null ? vts.Venue.VenueSubname : "",
-                        time_slot_id = vts.TimeSlotId
+                        time_slot_id = vts.TimeSlotId,
                     })
                     .ToListAsync();
 
-                return Ok(new
-                {
-                    success = true,
-                    locked
-                });
+                return Ok(new { success = true, locked });
             }
             catch (Exception ex)
             {
                 _logger.LogError(ex, "查询锁定场地时间段失败，date: {Date}", date);
-                return Ok(new
-                {
-                    success = false,
-                    locked = new object[] { },
-                    msg = "查询失败"
-                });
+                return Ok(
+                    new
+                    {
+                        success = false,
+                        locked = new object[] { },
+                        msg = "查询失败",
+                    }
+                );
             }
         }
 
@@ -119,74 +119,58 @@ namespace Sports_reservation_backend.Controllers
         {
             try
             {
-                if (request.VenueId <= 0 || request.TimeSlotId <= 0 || string.IsNullOrEmpty(request.Date))
+                if (
+                    request.VenueId <= 0
+                    || request.TimeSlotId <= 0
+                    || string.IsNullOrEmpty(request.Date)
+                )
                 {
-                    return Ok(new
-                    {
-                        success = false,
-                        message = "参数无效"
-                    });
+                    return Ok(new { success = false, message = "参数无效" });
                 }
 
                 if (!DateTime.TryParse(request.Date, out DateTime targetDate))
                 {
-                    return Ok(new
-                    {
-                        success = false,
-                        message = "日期格式错误"
-                    });
+                    return Ok(new { success = false, message = "日期格式错误" });
                 }
 
                 // 查询对应的 VenueTimeSlot
-                var vts = await _db.VenueTimeSlotSet
-                    .Include(v => v.TimeSlot)
+                var vts = await _db
+                    .VenueTimeSlotSet.Include(v => v.TimeSlot)
                     .FirstOrDefaultAsync(v =>
-                        v.VenueId == request.VenueId &&
-                        v.TimeSlotId == request.TimeSlotId &&
-                        v.TimeSlot != null &&
-                        v.TimeSlot.BeginTime.HasValue &&
-                        v.TimeSlot.BeginTime.Value.Date == targetDate.Date
+                        v.VenueId == request.VenueId
+                        && v.TimeSlotId == request.TimeSlotId
+                        && v.TimeSlot != null
+                        && v.TimeSlot.BeginTime.HasValue
+                        && v.TimeSlot.BeginTime.Value.Date == targetDate.Date
                     );
 
                 if (vts == null)
                 {
-                    return Ok(new
-                    {
-                        success = false,
-                        message = "时间段不存在"
-                    });
+                    return Ok(new { success = false, message = "时间段不存在" });
                 }
 
                 // 已经被占用
                 if (vts.TimeSlotStatus == "busy")
                 {
-                    return Ok(new
-                    {
-                        success = false,
-                        message = "已被占用"
-                    });
+                    return Ok(new { success = false, message = "已被占用" });
                 }
 
                 // 可用
-                return Ok(new
-                {
-                    success = true,
-                    message = "可用"
-                });
+                return Ok(new { success = true, message = "可用" });
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "检查场地时间段失败，VenueId: {VenueId}, TimeSlotId: {TimeSlotId}, Date: {Date}",
-                    request.VenueId, request.TimeSlotId, request.Date);
+                _logger.LogError(
+                    ex,
+                    "检查场地时间段失败，VenueId: {VenueId}, TimeSlotId: {TimeSlotId}, Date: {Date}",
+                    request.VenueId,
+                    request.TimeSlotId,
+                    request.Date
+                );
 
-                return Ok(new
-                {
-                    success = false,
-                    message = "检查失败"
-                });
+                return Ok(new { success = false, message = "检查失败" });
             }
         }
-
 
         [Authorize]
         [HttpPost("confirm-booking")]
@@ -205,19 +189,28 @@ namespace Sports_reservation_backend.Controllers
                 var item = request.Appointments.FirstOrDefault();
 
                 // 1. 查询 TimeSlot
-                var timeslot = await _db.TimeSlotSet.FirstOrDefaultAsync(ts => ts.TimeSlotId == item.TimeSlotId);
+                var timeslot = await _db.TimeSlotSet.FirstOrDefaultAsync(ts =>
+                    ts.TimeSlotId == item.TimeSlotId
+                );
                 if (timeslot == null)
                     return Ok(new { success = false, message = $"时间段 {item.TimeSlotId} 无效" });
 
                 // 2. 查询 VenueTimeSlot
-                var vts = await _db.VenueTimeSlotSet
-                    .FirstOrDefaultAsync(v => v.VenueId == item.VenueId && v.TimeSlotId == item.TimeSlotId);
+                var vts = await _db.VenueTimeSlotSet.FirstOrDefaultAsync(v =>
+                    v.VenueId == item.VenueId && v.TimeSlotId == item.TimeSlotId
+                );
 
                 if (vts == null)
                     return Ok(new { success = false, message = $"场地 {item.VenueId} 无效" });
 
                 if (vts.TimeSlotStatus == "busy")
-                    return Ok(new { success = false, message = $"场地 {item.VenueId} 时间段 {item.TimeSlotId} 已被锁定" });
+                    return Ok(
+                        new
+                        {
+                            success = false,
+                            message = $"场地 {item.VenueId} 时间段 {item.TimeSlotId} 已被锁定",
+                        }
+                    );
 
                 // 3. 查询 Venue，获取价格
                 var venue = await _db.VenueSet.FirstOrDefaultAsync(v => v.VenueId == item.VenueId);
@@ -238,7 +231,7 @@ namespace Sports_reservation_backend.Controllers
                     FinishTime = null,
                     BeginTime = beginDateTime,
                     EndTime = endDateTime,
-                    AppointmentStatus = item.Status
+                    AppointmentStatus = item.Status,
                 };
                 _db.AppointmentSet.Add(appointment);
                 await _db.SaveChangesAsync(); // 获取 AppointmentId
@@ -247,37 +240,39 @@ namespace Sports_reservation_backend.Controllers
                 vts.TimeSlotStatus = "busy";
 
                 // 7. 创建 UserAppointment
-                _db.UserAppointmentSet.Add(new UserAppointment
-                {
-                    AppointmentId = appointment.AppointmentId,
-                    UserId = userId
-                });
+                _db.UserAppointmentSet.Add(
+                    new UserAppointment
+                    {
+                        AppointmentId = appointment.AppointmentId,
+                        UserId = userId,
+                    }
+                );
 
                 // 8. 创建 VenueAppointment
-                _db.VenueAppointmentSet.Add(new VenueAppointment
-                {
-                    AppointmentId = appointment.AppointmentId,
-                    VenueId = item.VenueId
-                });
+                _db.VenueAppointmentSet.Add(
+                    new VenueAppointment
+                    {
+                        AppointmentId = appointment.AppointmentId,
+                        VenueId = item.VenueId,
+                    }
+                );
 
                 // 9. 创建 Bill
-                _db.BillSet.Add(new Bill
-                {
-                    AppointmentId = appointment.AppointmentId,
-                    UserId = userId,
-                    BillStatus = "pending",
-                    BillAmount = price,
-                    BeginTime = DateTime.UtcNow.AddHours(8)
-                });
+                _db.BillSet.Add(
+                    new Bill
+                    {
+                        AppointmentId = appointment.AppointmentId,
+                        UserId = userId,
+                        BillStatus = "pending",
+                        BillAmount = price,
+                        BeginTime = DateTime.UtcNow.AddHours(8),
+                    }
+                );
 
                 await _db.SaveChangesAsync();
                 await transaction.CommitAsync();
 
-                return Ok(new
-                {
-                    success = true,
-                    appointment_id = appointment.AppointmentId
-                });
+                return Ok(new { success = true, appointment_id = appointment.AppointmentId });
             }
             catch (Exception ex)
             {
@@ -286,93 +281,102 @@ namespace Sports_reservation_backend.Controllers
                 return Ok(new { success = false, message = "预约失败，请稍后重试" });
             }
         }
-[Authorize]
-[HttpPost("user-limit-status")] // 改成 POST，因为要接收请求体
-public async Task<IActionResult> GetUserLimitStatus([FromBody] DateRequest request)
-{
-    try
-    {
-        // 1. 从 token 获取 userId
-        var userIdStr = User.FindFirst("userId")?.Value;
-        if (!int.TryParse(userIdStr, out int userId))
-        {
-            return Ok(new { success = false, message = "Token 无效" });
-        }
 
-        // 2. 检查用户是否在有效黑名单
-        var blacklist = await _db.BlacklistSet
-            .Where(b => b.UserId == userId && b.BannedStatus == "valid")
-            .FirstOrDefaultAsync();
-
-        if (blacklist != null)
+        [Authorize]
+        [HttpPost("user-limit-status")] // POST 接收请求体
+        public async Task<IActionResult> GetUserLimitStatus([FromBody] DateRequest request)
         {
-            return Ok(new
+            try
             {
-                success = false,
-                message = "该用户已被封禁，无法预约",
-                userId = userId
-            });
-        }
+                // 1. 从 token 获取 userId
+                var userIdStr = User.FindFirst("userId")?.Value;
+                if (!int.TryParse(userIdStr, out int userId))
+                {
+                    return Ok(new { success = false, message = "Token 无效" });
+                }
 
-        // 3. 处理请求日期
-        DateTime targetDate;
-        if (!string.IsNullOrWhiteSpace(request?.Date))
-        {
-            if (!DateTime.TryParse(request.Date, out targetDate))
+                // 2. 检查用户是否在有效黑名单
+                bool isBlacklisted = await _db.BlacklistSet.AnyAsync(b =>
+                    b.UserId == userId && b.BannedStatus == "valid"
+                );
+
+                if (isBlacklisted)
+                {
+                    return Ok(
+                        new
+                        {
+                            success = false,
+                            message = "该用户已被封禁，无法预约",
+                            userId = userId,
+                        }
+                    );
+                }
+
+                // 3. 处理请求日期
+                DateTime targetDate;
+                if (!string.IsNullOrWhiteSpace(request?.Date))
+                {
+                    if (!DateTime.TryParse(request.Date, out targetDate))
+                    {
+                        return Ok(
+                            new { success = false, message = "日期格式错误，应为 yyyy-MM-dd" }
+                        );
+                    }
+                }
+                else
+                {
+                    targetDate = DateTime.Today;
+                }
+
+                var nextDay = targetDate.AddDays(1);
+
+                // 4. 查询该日期的预约
+                var appointments = await (
+                    from ua in _db.UserAppointmentSet
+                    join a in _db.AppointmentSet on ua.AppointmentId equals a.AppointmentId
+                    where
+                        ua.UserId == userId
+                        && a.BeginTime >= targetDate
+                        && a.BeginTime < nextDay
+                        && (
+                            a.AppointmentStatus == "upcoming"
+                            || a.AppointmentStatus == "ongoing"
+                            || a.AppointmentStatus == "completed"
+                            || a.AppointmentStatus == "overtime"
+                        )
+                    select new { a.BeginTime, a.EndTime }
+                ).ToListAsync();
+
+                // 5. 计算已使用小时数
+                int usedHours = (int)
+                    appointments.Sum(a => (a.EndTime.Value - a.BeginTime.Value).TotalHours);
+
+                // 6. 每日限制（每天最多4小时）
+                int dailyLimit = 4;
+
+                return Ok(
+                    new
+                    {
+                        success = true,
+                        userId = userId,
+                        dailyLimit = dailyLimit,
+                        usedHours = usedHours,
+                        remainingHours = Math.Max(dailyLimit - usedHours, 0),
+                        date = targetDate.ToString("yyyy-MM-dd"),
+                    }
+                );
+            }
+            catch (Exception ex)
             {
-                return Ok(new { success = false, message = "日期格式错误，应为 yyyy-MM-dd" });
+                _logger.LogError(ex, "获取用户预约时长失败");
+                return Ok(new { success = false, message = "获取失败，请稍后重试" });
             }
         }
-        else
+
+        // 请求体类
+        public class DateRequest
         {
-            targetDate = DateTime.Today;
+            public string? Date { get; set; } // yyyy-MM-dd
         }
-
-        var nextDay = targetDate.AddDays(1);
-
-        // 4. 查询该日期的预约
-        var appointments = await (
-            from ua in _db.UserAppointmentSet
-            join a in _db.AppointmentSet on ua.AppointmentId equals a.AppointmentId
-            where ua.UserId == userId
-                  && a.BeginTime >= targetDate
-                  && a.BeginTime < nextDay
-                  && (a.AppointmentStatus == "upcoming" 
-                      || a.AppointmentStatus == "ongoing" 
-                      || a.AppointmentStatus == "completed"
-                      || a.AppointmentStatus == "overtime")
-            select new { a.BeginTime, a.EndTime }
-        ).ToListAsync();
-
-        int usedHours = (int)appointments.Sum(a => (a.EndTime.Value - a.BeginTime.Value).TotalHours);
-
-        // 5. 每日限制（每天最多4小时）
-        int dailyLimit = 4;
-
-        return Ok(new
-        {
-            success = true,
-            userId = userId,
-            dailyLimit = dailyLimit,
-            usedHours = usedHours,
-            remainingHours = dailyLimit - usedHours,
-            date = targetDate.ToString("yyyy-MM-dd")
-        });
-    }
-    catch (Exception ex)
-    {
-        _logger.LogError(ex, "获取用户预约时长失败");
-        return Ok(new { success = false, message = "获取失败，请稍后重试" });
-    }
-}
-
-// 请求体类
-public class DateRequest
-{
-    public string? Date { get; set; } // yyyy-MM-dd
-}
-
-
-
     }
 }

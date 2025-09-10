@@ -19,43 +19,99 @@ public class ViolationController : ControllerBase
         _logger = logger;
     }
 
-    [HttpGet]
-    public async Task<IActionResult> GetViolationList()
+    [HttpGet("violation-list")]
+    public async Task<IActionResult> GetViolationList(
+        int page = 1,
+        int pageSize = 10,
+        string keyword = null
+    )
     {
         try
         {
-            var now = DateTime.UtcNow.AddHours(8);
+            if (page <= 0)
+                page = 1;
+            if (pageSize <= 0)
+                pageSize = 10;
 
-            var violations = await (
+            // 1. 基础查询
+            var query =
                 from v in _db.ViolationSet
                 join uv in _db.UserViolationSet on v.ViolationId equals uv.ViolationId
                 join u in _db.UserSet on uv.UserId equals u.UserId
                 join a in _db.AppointmentSet on v.AppointmentId equals a.AppointmentId
                 join va in _db.VenueAppointmentSet on a.AppointmentId equals va.AppointmentId
                 join ve in _db.VenueSet on va.VenueId equals ve.VenueId
-                join b in _db.BlacklistSet.Where(bl => bl.BannedStatus == "valid")
-                    on u.UserId equals b.UserId
-                    into blGroup
-                from b2 in blGroup.DefaultIfEmpty() // 左连接，可能没有有效黑名单
                 select new
                 {
-                    id = v.ViolationId,
-                    userName = u.UserName,
-                    userId = u.UserId,
-                    violationReason = v.ViolationReason,
-                    venue = ve.VenueName,
-                    timeSlot = a.BeginTime.HasValue && a.EndTime.HasValue
-                        ? $"{a.BeginTime.Value:HH:mm}-{a.EndTime.Value:HH:mm}"
-                        : "",
-                    violationDate = v.ViolationTime.HasValue
-                        ? v.ViolationTime.Value.ToString("yyyy-MM-dd")
-                        : "",
-                    isBlacklisted = b2 != null,
-                    blacklistTimestamp = b2 != null ? (DateTime?)b2.BeginTime : null,
-                }
-            ).ToListAsync();
+                    v.ViolationId,
+                    u.UserName,
+                    u.UserId,
+                    v.ViolationReason,
+                    ve.VenueName,
+                    a.BeginTime,
+                    a.EndTime,
+                    v.ViolationTime,
+                    // 是否有任意有效黑名单
+                    IsBlacklisted = _db.BlacklistSet.Any(bl =>
+                        bl.UserId == u.UserId && bl.BannedStatus == "valid"
+                    ),
+                    // 最新一条有效黑名单开始时间
+                    BlacklistTimestamp = _db
+                        .BlacklistSet.Where(bl =>
+                            bl.UserId == u.UserId && bl.BannedStatus == "valid"
+                        )
+                        .OrderByDescending(bl => bl.BeginTime)
+                        .Select(bl => (DateTime?)bl.BeginTime)
+                        .FirstOrDefault(),
+                };
 
-            return Ok(new { success = true, data = violations });
+            // 2. 关键字搜索
+            if (!string.IsNullOrWhiteSpace(keyword))
+            {
+                query = query.Where(q =>
+                    q.UserName.Contains(keyword) || q.UserId.ToString().Contains(keyword)
+                );
+            }
+
+            // 3. 总记录数
+            var totalCount = await query.CountAsync();
+
+            // 4. 分页并按违约时间降序
+            var list = await query
+                .OrderByDescending(q => q.ViolationTime)
+                .Skip((page - 1) * pageSize)
+                .Take(pageSize)
+                .ToListAsync();
+
+            // 5. 内存中格式化输出
+            var violations = list.Select(v => new
+                {
+                    id = v.ViolationId,
+                    userName = v.UserName,
+                    userId = v.UserId,
+                    violationReason = v.ViolationReason,
+                    venue = v.VenueName,
+                    timeSlot = v.BeginTime.HasValue && v.EndTime.HasValue
+                        ? $"{v.BeginTime.Value:HH:mm}-{v.EndTime.Value:HH:mm}"
+                        : "",
+                    violationDate = v.ViolationTime?.ToString("yyyy-MM-dd"),
+                    isBlacklisted = v.IsBlacklisted,
+                    blacklistTimestamp = v.BlacklistTimestamp,
+                })
+                .ToList();
+
+            // 6. 返回
+            return Ok(
+                new
+                {
+                    success = true,
+                    page,
+                    pageSize,
+                    totalCount,
+                    totalPages = (int)Math.Ceiling((double)totalCount / pageSize),
+                    data = violations,
+                }
+            );
         }
         catch (Exception ex)
         {
@@ -78,16 +134,18 @@ public class ViolationController : ControllerBase
             if (appointment == null)
                 return BadRequest(new { success = false, message = "预约不存在" });
 
+            var now = DateTime.UtcNow.AddHours(8);
+
             // 2. 创建违约记录
             var violation = new Violation
             {
                 AppointmentId = request.AppointmentId,
                 ViolationReason = request.ViolationReason,
                 ViolationPenalty = request.ViolationPenalty,
-                ViolationTime = DateTime.UtcNow.AddHours(8),
+                ViolationTime = now,
             };
             _db.ViolationSet.Add(violation);
-            await _db.SaveChangesAsync(); // 获取 violation_id
+            await _db.SaveChangesAsync(); // 保存后获取 ViolationId
 
             // 3. 创建 user_violation 关联
             var userViolation = new UserViolation
@@ -96,7 +154,6 @@ public class ViolationController : ControllerBase
                 ViolationId = violation.ViolationId,
             };
             _db.UserViolationSet.Add(userViolation);
-            await _db.SaveChangesAsync();
 
             // 4. 查询场地信息
             var venueName = await (
@@ -106,13 +163,15 @@ public class ViolationController : ControllerBase
                 select ve.VenueName
             ).FirstOrDefaultAsync();
 
-            // 5. 查询是否在黑名单
-            var now = DateTime.UtcNow.AddHours(8);
-            var blacklist = await _db
-                .BlacklistSet.Where(b => b.UserId == request.UserId && b.BannedStatus == "valid")
-                .FirstOrDefaultAsync();
+            // 5. 查询是否在有效黑名单
+            bool isBlacklisted = await _db.BlacklistSet.AnyAsync(b =>
+                b.UserId == request.UserId && b.BannedStatus == "valid"
+            );
 
-            // 6. 返回结果
+            // 6. 保存 user_violation
+            await _db.SaveChangesAsync();
+
+            // 7. 构造返回结果
             var result = new
             {
                 id = violation.ViolationId,
@@ -124,8 +183,7 @@ public class ViolationController : ControllerBase
                     ? $"{appointment.BeginTime.Value:HH:mm}-{appointment.EndTime.Value:HH:mm}"
                     : "",
                 violationDate = violation.ViolationTime?.ToString("yyyy-MM-dd"),
-                isBlacklisted = blacklist != null,
-                blacklistTimestamp = blacklist?.BeginTime,
+                isBlacklisted = isBlacklisted,
             };
 
             return Ok(

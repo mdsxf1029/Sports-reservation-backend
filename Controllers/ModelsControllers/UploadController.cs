@@ -1,3 +1,6 @@
+using System.IdentityModel.Tokens.Jwt;
+using System.Security.Claims;
+using System.Text;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
@@ -5,10 +8,8 @@ using Microsoft.IdentityModel.Tokens;
 using Sports_reservation_backend.Data;
 using Sports_reservation_backend.Models.RequestModels;
 using Sports_reservation_backend.Models.TableModels;
-using System.IdentityModel.Tokens.Jwt;
-using System.Security.Claims;
-using System.Text;
 using Sports_reservation_backend.Utils;
+
 [ApiController]
 [Route("api/upload")]
 public class UploadController : ControllerBase
@@ -32,12 +33,14 @@ public class UploadController : ControllerBase
 
         if (avatar == null || avatar.Length == 0)
         {
-            return BadRequest(new
-            {
-                code = 1001,
-                msg = "未选择文件",
-                data = (object)null
-            });
+            return BadRequest(
+                new
+                {
+                    code = 1001,
+                    msg = "未选择文件",
+                    data = (object)null,
+                }
+            );
         }
 
         // 验证格式
@@ -45,12 +48,14 @@ public class UploadController : ControllerBase
         var ext = Path.GetExtension(avatar.FileName).ToLower();
         if (!allowedExtensions.Contains(ext))
         {
-            return BadRequest(new
-            {
-                code = 1001,
-                msg = "文件格式不支持",
-                data = (object)null
-            });
+            return BadRequest(
+                new
+                {
+                    code = 1001,
+                    msg = "文件格式不支持",
+                    data = (object)null,
+                }
+            );
         }
 
         // 生成唯一文件名
@@ -75,7 +80,7 @@ public class UploadController : ControllerBase
         }
 
         // 构建访问 URL
-        var avatarUrl = $"{Request.Scheme}://{Request.Host}/uploads/avatar/{fileName}";
+        var avatarUrl = $"{Request.Scheme}://{Request.Host}:5101/uploads/avatar/{fileName}";
 
         // 处理 Token 更新用户头像
         var authHeader = Request.Headers["Authorization"].ToString();
@@ -107,13 +112,16 @@ public class UploadController : ControllerBase
             }
         }
 
-        return Ok(new
-        {
-            code = 0,
-            msg = "头像上传成功",
-            data = new { avatarUrl }
-        });
+        return Ok(
+            new
+            {
+                code = 0,
+                msg = "头像上传成功",
+                data = new { avatarUrl },
+            }
+        );
     }
+
     [HttpPost("venue-image")]
     [Consumes("multipart/form-data")]
     public async Task<IActionResult> UploadVenueImage([FromForm] UploadVenueImageRequest request)
@@ -130,11 +138,7 @@ public class UploadController : ControllerBase
         var ext = Path.GetExtension(file.FileName).ToLower();
         if (!allowedExtensions.Contains(ext))
         {
-            return BadRequest(new
-            {
-                code = 1,
-                msg = "文件格式不支持，请上传.jpg或.png格式图片"
-            });
+            return BadRequest(new { code = 1, msg = "文件格式不支持，请上传.jpg或.png格式图片" });
         }
 
         // 生成文件名
@@ -149,15 +153,15 @@ public class UploadController : ControllerBase
             await file.CopyToAsync(stream);
         }
 
-        var url = $"{Request.Scheme}://{Request.Host}/uploads/venue/{fileName}";
+        var url = $"{Request.Scheme}://{Request.Host}:5101/uploads/venue/{fileName}";
 
-        return Ok(new
-        {
-            code = 0,
-            msg = "图片上传成功",
-            data = new { url }
-        });
+        return Ok(
+            new
+            {
+                code = 0,
+                msg = "图片上传成功",
+                data = new { url },
+            }
+        );
     }
-
-
 }

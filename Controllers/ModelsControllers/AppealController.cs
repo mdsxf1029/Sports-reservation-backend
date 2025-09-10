@@ -508,7 +508,7 @@ public class AppealController : ControllerBase
             {
                 appeal.AppealStatus = request.Action == "approve" ? "approved" : "rejected";
                 appeal.ProcessorId = adminId;
-                appeal.ProcessTime = DateTime.Now;
+                appeal.ProcessTime = DateTime.UtcNow.AddHours(8);
                 appeal.RejectReason = request.Action == "reject" ? request.RejectReason : null;
             }
 
