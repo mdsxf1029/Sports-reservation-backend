@@ -518,6 +518,8 @@ public class AppealController : ControllerBase
                 .Where(a => request.AppealIds.Contains(a.AppealId) && a.AppealStatus == "pending")
                 .ToListAsync();
 
+            int processedCount = appeals.Count; // 实际被处理的数量
+
             foreach (var appeal in appeals)
             {
                 appeal.AppealStatus = request.Action == "approve" ? "approved" : "rejected";
@@ -576,7 +578,7 @@ public class AppealController : ControllerBase
             await _db.SaveChangesAsync();
             await transaction.CommitAsync();
 
-            return Ok(new { code = 200 });
+            return Ok(new { code = 200, processedCount }); // 返回处理条数
         }
         catch (Exception ex)
         {
