@@ -147,7 +147,6 @@ namespace Sports_reservation_backend.Controllers
 
                 // 3. 添加黑名单记录
                 var now = DateTime.UtcNow.AddHours(8);
-                ;
                 var blacklist = new Blacklist
                 {
                     UserId = request.Id,
@@ -159,9 +158,22 @@ namespace Sports_reservation_backend.Controllers
                 };
 
                 _db.BlacklistSet.Add(blacklist);
+
+                // 4. 添加通知
+                var notification = new Notification
+                {
+                    UserId = request.Id,
+                    Content =
+                        $"您已因为“{request.BannedReason}”被管理员加入黑名单，直到“{request.EndTime:yyyy-MM-dd HH:mm}”解除！",
+                    CreateTime = now,
+                    IsRead = 0, // 0 表示未读
+                };
+                _db.NotificationSet.Add(notification);
+
+                // 5. 保存数据库
                 await _db.SaveChangesAsync();
 
-                // 4. 构建返回值，只返回新增的黑名单
+                // 6. 构建返回值，只返回新增的黑名单
                 var result = new
                 {
                     userId = blacklist.UserId,
