@@ -167,9 +167,21 @@ public class AppealController : ControllerBase
 
             if (!string.IsNullOrWhiteSpace(keyword))
             {
-                query = query.Where(a =>
-                    a.UserName.Contains(keyword) || a.AppealReason.Contains(keyword)
-                );
+                // 判断 keyword 是否为数字
+                if (int.TryParse(keyword, out var userId))
+                {
+                    query = query.Where(a =>
+                        a.UserId == userId
+                        || a.UserName.Contains(keyword)
+                        || a.AppealReason.Contains(keyword)
+                    );
+                }
+                else
+                {
+                    query = query.Where(a =>
+                        a.UserName.Contains(keyword) || a.AppealReason.Contains(keyword)
+                    );
+                }
             }
 
             // 3. 分页
