@@ -28,12 +28,22 @@ namespace Sports_reservation_backend.Controllers
         }
 
         [HttpGet]
-        public async Task<IActionResult> GetBlacklist()
+        public async Task<IActionResult> GetBlacklist(
+            [FromQuery] int page = 1,
+            [FromQuery] int pageSize = 10
+        )
         {
             try
             {
-                var blacklist = await _db
-                    .BlacklistSet.Select(b => new
+                if (page <= 0)
+                    page = 1;
+                if (pageSize <= 0)
+                    pageSize = 10;
+
+                // 只查 valid 的黑名单
+                var query = _db
+                    .BlacklistSet.Where(b => b.BannedStatus == "valid")
+                    .Select(b => new
                     {
                         userId = b.UserId,
                         managerId = b.ManagerId,
@@ -41,10 +51,19 @@ namespace Sports_reservation_backend.Controllers
                         endTime = b.EndTime,
                         bannedReason = b.BannedReason,
                         bannedStatus = b.BannedStatus,
-                    })
+                    });
+
+                // 总数（valid 的总数）
+                var totalCount = await query.CountAsync();
+
+                // 分页
+                var blacklist = await query
+                    .OrderByDescending(b => b.beginTime) // 按开始时间倒序更合理
+                    .Skip((page - 1) * pageSize)
+                    .Take(pageSize)
                     .ToListAsync();
 
-                // 去重统计：目前在黑名单内的用户数（status = valid）
+                // 去重统计：目前在黑名单内的用户数
                 var userCount = await _db
                     .BlacklistSet.Where(b => b.BannedStatus == "valid")
                     .Select(b => b.UserId)
@@ -56,6 +75,10 @@ namespace Sports_reservation_backend.Controllers
                     {
                         success = true,
                         data = blacklist,
+                        page,
+                        pageSize,
+                        totalCount,
+                        totalPages = (int)Math.Ceiling(totalCount / (double)pageSize),
                         userCount,
                         message = "获取黑名单成功",
                     }
@@ -69,6 +92,10 @@ namespace Sports_reservation_backend.Controllers
                     {
                         success = false,
                         data = new object[] { },
+                        page,
+                        pageSize,
+                        totalCount = 0,
+                        totalPages = 0,
                         userCount = 0,
                         message = "获取黑名单失败",
                     }
