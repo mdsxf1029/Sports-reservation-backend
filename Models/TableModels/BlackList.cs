@@ -1,8 +1,8 @@
 ﻿using System;
 using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
-using Swashbuckle.AspNetCore.Annotations;
 using Microsoft.EntityFrameworkCore;
+using Swashbuckle.AspNetCore.Annotations;
 
 namespace Sports_reservation_backend.Models.TableModels;
 
@@ -11,6 +11,7 @@ namespace Sports_reservation_backend.Models.TableModels;
 [SwaggerSchema(Description = "黑名单表（普通用户-管理员）")]
 public class Blacklist
 {
+    [Required]
     [Column("USER_ID")]
     [SwaggerSchema("用户ID")]
     public int UserId { get; set; }

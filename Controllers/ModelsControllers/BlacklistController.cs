@@ -58,7 +58,7 @@ namespace Sports_reservation_backend.Controllers
 
                 // 分页
                 var blacklist = await query
-                    .OrderByDescending(b => b.beginTime) // 按开始时间倒序更合理
+                    .OrderByDescending(b => b.beginTime)
                     .Skip((page - 1) * pageSize)
                     .Take(pageSize)
                     .ToListAsync();
@@ -70,6 +70,14 @@ namespace Sports_reservation_backend.Controllers
                     .Distinct()
                     .CountAsync();
 
+                // ---- 全局 violationCount ----
+                var violationCount = await (
+                    from v in _db.ViolationSet
+                    join ua in _db.UserAppointmentSet on v.AppointmentId equals ua.AppointmentId
+                    group v by ua.UserId into g
+                    select new { userId = g.Key, count = g.Count() }
+                ).ToListAsync();
+
                 return Ok(
                     new
                     {
@@ -80,6 +88,7 @@ namespace Sports_reservation_backend.Controllers
                         totalCount,
                         totalPages = (int)Math.Ceiling(totalCount / (double)pageSize),
                         userCount,
+                        violationCount, // 全局统计
                         message = "获取黑名单成功",
                     }
                 );
@@ -97,6 +106,7 @@ namespace Sports_reservation_backend.Controllers
                         totalCount = 0,
                         totalPages = 0,
                         userCount = 0,
+                        violationCount = new object[] { }, // 保持结构一致
                         message = "获取黑名单失败",
                     }
                 );
