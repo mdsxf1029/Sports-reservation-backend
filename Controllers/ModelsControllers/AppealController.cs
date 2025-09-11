@@ -510,10 +510,11 @@ public class AppealController : ControllerBase
 
             using var transaction = await _db.Database.BeginTransactionAsync();
 
+            // 预加载 User、Violation，避免循环中多次查库
             var appeals = await _db
-                .AppealSet.Where(a =>
-                    request.AppealIds.Contains(a.AppealId) && a.AppealStatus == "pending"
-                )
+                .AppealSet.Include(a => a.User)
+                .Include(a => a.Violation)
+                .Where(a => request.AppealIds.Contains(a.AppealId) && a.AppealStatus == "pending")
                 .ToListAsync();
 
             foreach (var appeal in appeals)
@@ -522,6 +523,53 @@ public class AppealController : ControllerBase
                 appeal.ProcessorId = adminId;
                 appeal.ProcessTime = DateTime.UtcNow.AddHours(8);
                 appeal.RejectReason = request.Action == "reject" ? request.RejectReason : null;
+
+                string notificationContent;
+
+                if (request.Action == "approve")
+                {
+                    // 1. 给用户加积分
+                    if (appeal.User != null)
+                    {
+                        appeal.User.Points += 10;
+
+                        var pointChange = new PointChange
+                        {
+                            UserId = appeal.UserId,
+                            ChangeAmount = 10,
+                            ChangeTime = DateTime.UtcNow.AddHours(8),
+                            ChangeReason = "申诉成功补偿",
+                        };
+                        await _db.PointChangeSet.AddAsync(pointChange);
+                    }
+
+                    // 2. 修改 appointment 状态
+                    if (appeal.Violation != null)
+                    {
+                        var appointment = await _db.AppointmentSet.FirstOrDefaultAsync(a =>
+                            a.AppointmentId == appeal.Violation.AppointmentId
+                        );
+
+                        if (appointment != null)
+                            appointment.AppointmentStatus = "completed";
+                    }
+
+                    notificationContent = "您的申诉已被管理员接受，积分+10";
+                }
+                else
+                {
+                    notificationContent = $"您的申诉被管理员拒绝，理由: {request.RejectReason}";
+                }
+
+                // 插入通知
+                var notification = new Notification
+                {
+                    UserId = appeal.UserId,
+                    Content = notificationContent,
+                    CreateTime = DateTime.UtcNow.AddHours(8),
+                    IsRead = 0, // 0 表示未读
+                };
+                await _db.NotificationSet.AddAsync(notification);
             }
 
             await _db.SaveChangesAsync();
