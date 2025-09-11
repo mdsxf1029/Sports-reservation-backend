@@ -44,11 +44,19 @@ namespace Sports_reservation_backend.Controllers
                     })
                     .ToListAsync();
 
+                // 去重统计：目前在黑名单内的用户数（status = valid）
+                var userCount = await _db
+                    .BlacklistSet.Where(b => b.BannedStatus == "valid")
+                    .Select(b => b.UserId)
+                    .Distinct()
+                    .CountAsync();
+
                 return Ok(
                     new
                     {
                         success = true,
                         data = blacklist,
+                        userCount,
                         message = "获取黑名单成功",
                     }
                 );
@@ -61,6 +69,7 @@ namespace Sports_reservation_backend.Controllers
                     {
                         success = false,
                         data = new object[] { },
+                        userCount = 0,
                         message = "获取黑名单失败",
                     }
                 );
