@@ -435,6 +435,8 @@ public class AppealController : ControllerBase
                     {
                         appointment.AppointmentStatus = "completed";
                     }
+
+                    appeal.Violation.ViolationStatus = "invalid";
                 }
 
                 // 3. 插入 point_change 记录
@@ -555,6 +557,8 @@ public class AppealController : ControllerBase
 
                         if (appointment != null)
                             appointment.AppointmentStatus = "completed";
+
+                        appeal.Violation.ViolationStatus = "invalid";
                     }
 
                     notificationContent = "您的申诉已被管理员接受，积分+10";

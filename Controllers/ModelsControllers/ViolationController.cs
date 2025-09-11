@@ -37,6 +37,7 @@ public class ViolationController : ControllerBase
             // 1. 基础查询
             var query =
                 from v in _db.ViolationSet
+                where v.ViolationStatus == "valid"
                 join uv in _db.UserViolationSet on v.ViolationId equals uv.ViolationId
                 join u in _db.UserSet on uv.UserId equals u.UserId
                 join a in _db.AppointmentSet on v.AppointmentId equals a.AppointmentId

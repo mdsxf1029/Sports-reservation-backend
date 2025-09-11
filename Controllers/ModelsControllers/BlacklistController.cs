@@ -48,7 +48,7 @@ namespace Sports_reservation_backend.Controllers
                     select new
                     {
                         userId = b.UserId,
-                        userName = u.UserName, // ✅ 加上用户名
+                        userName = u.UserName, // 加上用户名
                         managerId = b.ManagerId,
                         beginTime = b.BeginTime,
                         endTime = b.EndTime,
@@ -77,6 +77,7 @@ namespace Sports_reservation_backend.Controllers
                 var violationCount = await (
                     from v in _db.ViolationSet
                     join ua in _db.UserAppointmentSet on v.AppointmentId equals ua.AppointmentId
+                    where v.ViolationStatus == "valid" // 只统计 valid 的违规记录
                     group v by ua.UserId into g
                     select new { userId = g.Key, count = g.Count() }
                 ).ToListAsync();
@@ -360,7 +361,7 @@ namespace Sports_reservation_backend.Controllers
                     return Ok(
                         new
                         {
-                            code = 0,
+                            code = 200,
                             msg = "批量移除成功",
                             data = new
                             {
