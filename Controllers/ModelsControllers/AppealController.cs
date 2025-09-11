@@ -33,7 +33,12 @@ public class AppealController : ControllerBase
     {
         try
         {
-            // 1. 基础查询：只查询 Appeal 表，后续通过关联字段查询相关数据
+            // ---- 1. 统计各状态数量（不受分页和筛选条件影响）----
+            var pendingCount = await _db.AppealSet.CountAsync(a => a.AppealStatus == "pending");
+            var approvedCount = await _db.AppealSet.CountAsync(a => a.AppealStatus == "approved");
+            var rejectedCount = await _db.AppealSet.CountAsync(a => a.AppealStatus == "rejected");
+
+            // ---- 2. 构造查询（这里才开始联表 + 筛选 + 分页）----
             var query = _db
                 .AppealSet.Join(
                     _db.ViolationSet,
@@ -149,25 +154,18 @@ public class AppealController : ControllerBase
                         }
                 );
 
-            // 2. 过滤条件
+            // ---- 3. 筛选条件 ----
             if (!string.IsNullOrWhiteSpace(status))
-            {
                 query = query.Where(a => a.AppealStatus == status);
-            }
 
             if (!string.IsNullOrWhiteSpace(venue))
-            {
                 query = query.Where(a => a.Venue.Contains(venue));
-            }
 
             if (processor.HasValue)
-            {
                 query = query.Where(a => a.Processor == processor.Value);
-            }
 
             if (!string.IsNullOrWhiteSpace(keyword))
             {
-                // 判断 keyword 是否为数字
                 if (int.TryParse(keyword, out var userId))
                 {
                     query = query.Where(a =>
@@ -184,7 +182,7 @@ public class AppealController : ControllerBase
                 }
             }
 
-            // 3. 分页
+            // ---- 4. 分页 ----
             var total = await query.CountAsync();
             var data = await query
                 .OrderByDescending(a => a.AppealTime)
@@ -192,13 +190,16 @@ public class AppealController : ControllerBase
                 .Take(pageSize)
                 .ToListAsync();
 
-            // 4. 返回
+            // ---- 5. 返回 ----
             return Ok(
                 new
                 {
                     code = 200,
                     total,
                     data,
+                    pendingCount,
+                    approvedCount,
+                    rejectedCount,
                 }
             );
         }
