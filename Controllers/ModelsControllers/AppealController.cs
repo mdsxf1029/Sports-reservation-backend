@@ -216,7 +216,7 @@ public class AppealController : ControllerBase
     {
         try
         {
-            // 先获取申诉基本信息
+            // 1. 获取申诉基本信息
             var appeal = await _db
                 .AppealSet.Where(a => a.AppealId == appealId)
                 .Select(a => new
@@ -233,7 +233,6 @@ public class AppealController : ControllerBase
                 .FirstOrDefaultAsync();
 
             if (appeal == null)
-            {
                 return Ok(
                     new
                     {
@@ -242,16 +241,14 @@ public class AppealController : ControllerBase
                         data = (object?)null,
                     }
                 );
-            }
 
-            // 获取违约记录（Violation）信息
+            // 2. 获取违约记录（Violation）信息
             var violation = await _db
                 .ViolationSet.Where(v => v.ViolationId == appeal.ViolationId)
                 .Select(v => new { v.AppointmentId, v.ViolationTime })
                 .FirstOrDefaultAsync();
 
             if (violation == null)
-            {
                 return Ok(
                     new
                     {
@@ -260,34 +257,38 @@ public class AppealController : ControllerBase
                         data = (object?)null,
                     }
                 );
-            }
 
-            // 获取预约（Appointment）信息
-            var appointment = await _db
-                .AppointmentSet.Where(app => app.AppointmentId == violation.AppointmentId)
-                .Select(app => new { app.BeginTime, app.EndTime })
-                .FirstOrDefaultAsync();
+            // 3. 获取预约（Appointment）信息并关联 Venue
+            var appointmentWithVenue = await (
+                from app in _db.AppointmentSet
+                join va in _db.VenueAppointmentSet on app.AppointmentId equals va.AppointmentId
+                join ve in _db.VenueSet on va.VenueId equals ve.VenueId
+                where app.AppointmentId == violation.AppointmentId
+                select new
+                {
+                    app.BeginTime,
+                    app.EndTime,
+                    ve.VenueName,
+                }
+            ).FirstOrDefaultAsync();
 
-            if (appointment == null)
-            {
+            if (appointmentWithVenue == null)
                 return Ok(
                     new
                     {
                         code = 404,
-                        message = "预约记录不存在",
+                        message = "预约或场地不存在",
                         data = (object?)null,
                     }
                 );
-            }
 
-            // 获取时间段（TimeSlot）信息
+            // 4. 获取时间段（TimeSlot）信息
             var timeSlot = await _db
-                .TimeSlotSet.Where(ts => ts.BeginTime == appointment.BeginTime)
+                .TimeSlotSet.Where(ts => ts.BeginTime == appointmentWithVenue.BeginTime)
                 .Select(ts => new { ts.BeginTime, ts.EndTime })
                 .FirstOrDefaultAsync();
 
             if (timeSlot == null)
-            {
                 return Ok(
                     new
                     {
@@ -296,21 +297,20 @@ public class AppealController : ControllerBase
                         data = (object?)null,
                     }
                 );
-            }
 
-            // 获取用户信息（User）
+            // 5. 获取用户信息（User）
             var user = await _db
                 .UserSet.Where(u => u.UserId == appeal.UserId)
                 .Select(u => new { u.UserName, u.AvatarUrl })
                 .FirstOrDefaultAsync();
 
-            // 获取处理人信息（Processor）
+            // 6. 获取处理人信息（Processor）
             var processor = await _db
                 .UserSet.Where(u => u.UserId == appeal.ProcessorId)
                 .Select(u => new { u.UserName })
                 .FirstOrDefaultAsync();
 
-            // 组装最终返回的数据
+            // 7. 组装最终返回的数据
             var result = new
             {
                 appeal.AppealId,
@@ -323,6 +323,7 @@ public class AppealController : ControllerBase
                 AppealStatus = appeal.AppealStatus,
                 ProcessorName = processor?.UserName,
                 ProcessTime = appeal.ProcessTime,
+                Venue = appointmentWithVenue.VenueName,
             };
 
             return Ok(new { code = 200, data = result });
