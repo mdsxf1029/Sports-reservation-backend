@@ -40,18 +40,21 @@ namespace Sports_reservation_backend.Controllers
                 if (pageSize <= 0)
                     pageSize = 10;
 
-                // 只查 valid 的黑名单
-                var query = _db
-                    .BlacklistSet.Where(b => b.BannedStatus == "valid")
-                    .Select(b => new
+                // 只查 valid 的黑名单 + 联表查 UserName
+                var query =
+                    from b in _db.BlacklistSet
+                    join u in _db.UserSet on b.UserId equals u.UserId
+                    where b.BannedStatus == "valid"
+                    select new
                     {
                         userId = b.UserId,
+                        userName = u.UserName, // ✅ 加上用户名
                         managerId = b.ManagerId,
                         beginTime = b.BeginTime,
                         endTime = b.EndTime,
                         bannedReason = b.BannedReason,
                         bannedStatus = b.BannedStatus,
-                    });
+                    };
 
                 // 总数（valid 的总数）
                 var totalCount = await query.CountAsync();
@@ -88,7 +91,7 @@ namespace Sports_reservation_backend.Controllers
                         totalCount,
                         totalPages = (int)Math.Ceiling(totalCount / (double)pageSize),
                         userCount,
-                        violationCount, // 全局统计
+                        violationCount,
                         message = "获取黑名单成功",
                     }
                 );
@@ -106,7 +109,7 @@ namespace Sports_reservation_backend.Controllers
                         totalCount = 0,
                         totalPages = 0,
                         userCount = 0,
-                        violationCount = new object[] { }, // 保持结构一致
+                        violationCount = new object[] { },
                         message = "获取黑名单失败",
                     }
                 );
