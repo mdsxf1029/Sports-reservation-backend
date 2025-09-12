@@ -89,10 +89,15 @@ public class ViolationController : ControllerBase
             }
 
             // ======= 统计值 =======
-            var allViolationCount = await _db.ViolationSet.CountAsync();
+            // 总违约数（只统计 valid）
+            var allViolationCount = await _db.ViolationSet.CountAsync(v =>
+                v.ViolationStatus == "valid"
+            );
 
+            // 涉及用户数（只统计 valid）
             var userCount = await (
                 from v in _db.ViolationSet
+                where v.ViolationStatus == "valid"
                 join uv in _db.UserViolationSet on v.ViolationId equals uv.ViolationId
                 select uv.UserId
             )
@@ -100,9 +105,13 @@ public class ViolationController : ControllerBase
                 .CountAsync();
 
             var today = DateTime.UtcNow.AddHours(8).Date; // 东八区当天
+            // 今日违约数（只统计 valid）
             var todayCount = await _db.ViolationSet.CountAsync(v =>
-                v.ViolationTime.HasValue && v.ViolationTime.Value.Date == today
+                v.ViolationStatus == "valid"
+                && v.ViolationTime.HasValue
+                && v.ViolationTime.Value.Date == today
             );
+
             var allAppointmentCount = await _db.AppointmentSet.CountAsync();
 
             // 4. 总记录数（筛选后的）
