@@ -13,9 +13,10 @@ public class VenueAppointment
     [SwaggerSchema("预约ID")]
     public int AppointmentId { get; set; }
 
+    [Required]
     [Column("VENUE_ID")]
     [SwaggerSchema("场地ID")]
-    public int? VenueId { get; set; }
+    public int VenueId { get; set; }
 
     [ForeignKey(nameof(VenueId))]
     public Venue? Venue { get; set; }
