@@ -264,7 +264,7 @@ namespace Sports_reservation_backend.Controllers
                 return Ok(
                     new
                     {
-                        code = 0,
+                        code = 200,
                         msg = "用户已从黑名单移除",
                         data = new { userId = user.UserId, userName = user.UserName },
                     }

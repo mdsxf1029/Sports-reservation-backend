@@ -25,20 +25,35 @@ namespace Sports_reservation_backend.Controllers
         /// GET /api/venues?name=xxx
         /// </summary>
         [HttpGet]
-        public async Task<IActionResult> GetSubVenuesByName([FromQuery] string name)
+        public async Task<IActionResult> GetSubVenuesByName([FromQuery] string? name)
         {
             try
             {
-                if (string.IsNullOrWhiteSpace(name))
+                var query =
+                    from v in _db.VenueSet
+                    join va in _db.VenueAppointmentSet on v.VenueId equals va.VenueId into vaGroup
+                    from va in vaGroup.DefaultIfEmpty()
+                    join a in _db.AppointmentSet
+                        on va.AppointmentId equals a.AppointmentId
+                        into aGroup
+                    from a in aGroup.DefaultIfEmpty()
+                    select new { v, a };
+
+                // 如果传了 name，就加上过滤条件
+                if (!string.IsNullOrWhiteSpace(name))
                 {
-                    return Ok(new { success = false, venues = new object[] { } });
+                    query = query.Where(x => x.v.VenueName == name);
                 }
 
-                var list = await _db
-                    .VenueSet.AsNoTracking()
-                    .Where(v => v.VenueName == name)
-                    .OrderBy(v => v.VenueSubname)
-                    .Select(v => new { venue_id = v.VenueId, venue_subname = v.VenueSubname })
+                var list = await query
+                    .GroupBy(x => new { x.v.VenueId, x.v.VenueSubname })
+                    .OrderBy(g => g.Key.VenueSubname)
+                    .Select(g => new
+                    {
+                        venue_id = g.Key.VenueId,
+                        venue_subname = g.Key.VenueSubname,
+                        appointmentCount = g.Count(x => x.a != null),
+                    })
                     .ToListAsync();
 
                 return Ok(new { success = true, venues = list });
