@@ -28,35 +28,71 @@ namespace Sports_reservation_backend.Controllers
         }
 
         [HttpGet]
-        public async Task<IActionResult> GetBlacklist()
+        public async Task<IActionResult> GetBlacklist(
+            [FromQuery] int page = 1,
+            [FromQuery] int pageSize = 10
+        )
         {
             try
             {
-                var blacklist = await _db
-                    .BlacklistSet.Select(b => new
+                if (page <= 0)
+                    page = 1;
+                if (pageSize <= 0)
+                    pageSize = 10;
+
+                // 只查 valid 的黑名单 + 联表查 UserName
+                var query =
+                    from b in _db.BlacklistSet
+                    join u in _db.UserSet on b.UserId equals u.UserId
+                    where b.BannedStatus == "valid"
+                    select new
                     {
                         userId = b.UserId,
+                        userName = u.UserName, // 加上用户名
                         managerId = b.ManagerId,
                         beginTime = b.BeginTime,
                         endTime = b.EndTime,
                         bannedReason = b.BannedReason,
                         bannedStatus = b.BannedStatus,
-                    })
+                    };
+
+                // 总数（valid 的总数）
+                var totalCount = await query.CountAsync();
+
+                // 分页
+                var blacklist = await query
+                    .OrderByDescending(b => b.beginTime)
+                    .Skip((page - 1) * pageSize)
+                    .Take(pageSize)
                     .ToListAsync();
 
-                // 去重统计：目前在黑名单内的用户数（status = valid）
+                // 去重统计：目前在黑名单内的用户数
                 var userCount = await _db
                     .BlacklistSet.Where(b => b.BannedStatus == "valid")
                     .Select(b => b.UserId)
                     .Distinct()
                     .CountAsync();
 
+                // ---- 全局 violationCount ----
+                var violationCount = await (
+                    from v in _db.ViolationSet
+                    join ua in _db.UserAppointmentSet on v.AppointmentId equals ua.AppointmentId
+                    where v.ViolationStatus == "valid" // 只统计 valid 的违规记录
+                    group v by ua.UserId into g
+                    select new { userId = g.Key, count = g.Count() }
+                ).ToListAsync();
+
                 return Ok(
                     new
                     {
                         success = true,
                         data = blacklist,
+                        page,
+                        pageSize,
+                        totalCount,
+                        totalPages = (int)Math.Ceiling(totalCount / (double)pageSize),
                         userCount,
+                        violationCount,
                         message = "获取黑名单成功",
                     }
                 );
@@ -69,7 +105,12 @@ namespace Sports_reservation_backend.Controllers
                     {
                         success = false,
                         data = new object[] { },
+                        page,
+                        pageSize,
+                        totalCount = 0,
+                        totalPages = 0,
                         userCount = 0,
+                        violationCount = new object[] { },
                         message = "获取黑名单失败",
                     }
                 );
@@ -106,7 +147,6 @@ namespace Sports_reservation_backend.Controllers
 
                 // 3. 添加黑名单记录
                 var now = DateTime.UtcNow.AddHours(8);
-                ;
                 var blacklist = new Blacklist
                 {
                     UserId = request.Id,
@@ -118,9 +158,22 @@ namespace Sports_reservation_backend.Controllers
                 };
 
                 _db.BlacklistSet.Add(blacklist);
+
+                // 4. 添加通知
+                var notification = new Notification
+                {
+                    UserId = request.Id,
+                    Content =
+                        $"您已因为“{request.BannedReason}”被管理员加入黑名单，直到“{request.EndTime:yyyy-MM-dd HH:mm}”解除！",
+                    CreateTime = now,
+                    IsRead = 0, // 0 表示未读
+                };
+                _db.NotificationSet.Add(notification);
+
+                // 5. 保存数据库
                 await _db.SaveChangesAsync();
 
-                // 4. 构建返回值，只返回新增的黑名单
+                // 6. 构建返回值，只返回新增的黑名单
                 var result = new
                 {
                     userId = blacklist.UserId,
@@ -211,7 +264,7 @@ namespace Sports_reservation_backend.Controllers
                 return Ok(
                     new
                     {
-                        code = 0,
+                        code = 200,
                         msg = "用户已从黑名单移除",
                         data = new { userId = user.UserId, userName = user.UserName },
                     }
@@ -320,7 +373,7 @@ namespace Sports_reservation_backend.Controllers
                     return Ok(
                         new
                         {
-                            code = 0,
+                            code = 200,
                             msg = "批量移除成功",
                             data = new
                             {

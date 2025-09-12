@@ -151,7 +151,9 @@ create table violation (
    -- 违约原因
    violation_time    date,
    -- 违约时间
-   violation_penalty clob -- 处罚措施
+   violation_penalty clob, 
+   -- 处罚措施
+   violation_status  varchar(20) --违约状态
 );
 
 /*场地*/
@@ -382,12 +384,13 @@ create table blacklist (
       references "USER" ( user_id ),
    manager_id    number
       references "USER" ( user_id ),
-   begin_time    date not null,
+   begin_time    date,
    end_time      date not null,
    banned_reason clob,
    banned_status varchar(20) check ( banned_status in ( 'valid',
                                                         'invalid' ) ),
-   primary key ( user_id )
+   primary key ( user_id,
+                 begin_time )
 );
 
 /*用户-帖子：用户发帖记录表*/

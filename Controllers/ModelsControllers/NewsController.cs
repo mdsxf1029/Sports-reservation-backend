@@ -264,7 +264,7 @@ public class NewsController(OracleDbContext context, IWebHostEnvironment env) : 
             await file.CopyToAsync(stream);
         }
 
-        var coverUrl = $"{Request.Scheme}://{Request.Host}/uploads/news_cover/{fileName}";
+        var coverUrl = $"{Request.Scheme}://{Request.Host}:5101/uploads/news_cover/{fileName}";
 
         return Ok(new { coverUrl });
     }

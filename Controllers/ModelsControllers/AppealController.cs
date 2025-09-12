@@ -33,7 +33,12 @@ public class AppealController : ControllerBase
     {
         try
         {
-            // 1. 基础查询：只查询 Appeal 表，后续通过关联字段查询相关数据
+            // ---- 1. 统计各状态数量（不受分页和筛选条件影响）----
+            var pendingCount = await _db.AppealSet.CountAsync(a => a.AppealStatus == "pending");
+            var approvedCount = await _db.AppealSet.CountAsync(a => a.AppealStatus == "approved");
+            var rejectedCount = await _db.AppealSet.CountAsync(a => a.AppealStatus == "rejected");
+
+            // ---- 2. 构造查询（这里才开始联表 + 筛选 + 分页）----
             var query = _db
                 .AppealSet.Join(
                     _db.ViolationSet,
@@ -149,25 +154,18 @@ public class AppealController : ControllerBase
                         }
                 );
 
-            // 2. 过滤条件
+            // ---- 3. 筛选条件 ----
             if (!string.IsNullOrWhiteSpace(status))
-            {
                 query = query.Where(a => a.AppealStatus == status);
-            }
 
             if (!string.IsNullOrWhiteSpace(venue))
-            {
                 query = query.Where(a => a.Venue.Contains(venue));
-            }
 
             if (processor.HasValue)
-            {
                 query = query.Where(a => a.Processor == processor.Value);
-            }
 
             if (!string.IsNullOrWhiteSpace(keyword))
             {
-                // 判断 keyword 是否为数字
                 if (int.TryParse(keyword, out var userId))
                 {
                     query = query.Where(a =>
@@ -184,7 +182,7 @@ public class AppealController : ControllerBase
                 }
             }
 
-            // 3. 分页
+            // ---- 4. 分页 ----
             var total = await query.CountAsync();
             var data = await query
                 .OrderByDescending(a => a.AppealTime)
@@ -192,13 +190,16 @@ public class AppealController : ControllerBase
                 .Take(pageSize)
                 .ToListAsync();
 
-            // 4. 返回
+            // ---- 5. 返回 ----
             return Ok(
                 new
                 {
                     code = 200,
                     total,
                     data,
+                    pendingCount,
+                    approvedCount,
+                    rejectedCount,
                 }
             );
         }
@@ -215,7 +216,7 @@ public class AppealController : ControllerBase
     {
         try
         {
-            // 先获取申诉基本信息
+            // 1. 获取申诉基本信息
             var appeal = await _db
                 .AppealSet.Where(a => a.AppealId == appealId)
                 .Select(a => new
@@ -232,7 +233,6 @@ public class AppealController : ControllerBase
                 .FirstOrDefaultAsync();
 
             if (appeal == null)
-            {
                 return Ok(
                     new
                     {
@@ -241,16 +241,14 @@ public class AppealController : ControllerBase
                         data = (object?)null,
                     }
                 );
-            }
 
-            // 获取违约记录（Violation）信息
+            // 2. 获取违约记录（Violation）信息
             var violation = await _db
                 .ViolationSet.Where(v => v.ViolationId == appeal.ViolationId)
                 .Select(v => new { v.AppointmentId, v.ViolationTime })
                 .FirstOrDefaultAsync();
 
             if (violation == null)
-            {
                 return Ok(
                     new
                     {
@@ -259,34 +257,38 @@ public class AppealController : ControllerBase
                         data = (object?)null,
                     }
                 );
-            }
 
-            // 获取预约（Appointment）信息
-            var appointment = await _db
-                .AppointmentSet.Where(app => app.AppointmentId == violation.AppointmentId)
-                .Select(app => new { app.BeginTime, app.EndTime })
-                .FirstOrDefaultAsync();
+            // 3. 获取预约（Appointment）信息并关联 Venue
+            var appointmentWithVenue = await (
+                from app in _db.AppointmentSet
+                join va in _db.VenueAppointmentSet on app.AppointmentId equals va.AppointmentId
+                join ve in _db.VenueSet on va.VenueId equals ve.VenueId
+                where app.AppointmentId == violation.AppointmentId
+                select new
+                {
+                    app.BeginTime,
+                    app.EndTime,
+                    ve.VenueName,
+                }
+            ).FirstOrDefaultAsync();
 
-            if (appointment == null)
-            {
+            if (appointmentWithVenue == null)
                 return Ok(
                     new
                     {
                         code = 404,
-                        message = "预约记录不存在",
+                        message = "预约或场地不存在",
                         data = (object?)null,
                     }
                 );
-            }
 
-            // 获取时间段（TimeSlot）信息
+            // 4. 获取时间段（TimeSlot）信息
             var timeSlot = await _db
-                .TimeSlotSet.Where(ts => ts.BeginTime == appointment.BeginTime)
+                .TimeSlotSet.Where(ts => ts.BeginTime == appointmentWithVenue.BeginTime)
                 .Select(ts => new { ts.BeginTime, ts.EndTime })
                 .FirstOrDefaultAsync();
 
             if (timeSlot == null)
-            {
                 return Ok(
                     new
                     {
@@ -295,21 +297,20 @@ public class AppealController : ControllerBase
                         data = (object?)null,
                     }
                 );
-            }
 
-            // 获取用户信息（User）
+            // 5. 获取用户信息（User）
             var user = await _db
                 .UserSet.Where(u => u.UserId == appeal.UserId)
                 .Select(u => new { u.UserName, u.AvatarUrl })
                 .FirstOrDefaultAsync();
 
-            // 获取处理人信息（Processor）
+            // 6. 获取处理人信息（Processor）
             var processor = await _db
                 .UserSet.Where(u => u.UserId == appeal.ProcessorId)
                 .Select(u => new { u.UserName })
                 .FirstOrDefaultAsync();
 
-            // 组装最终返回的数据
+            // 7. 组装最终返回的数据
             var result = new
             {
                 appeal.AppealId,
@@ -322,6 +323,7 @@ public class AppealController : ControllerBase
                 AppealStatus = appeal.AppealStatus,
                 ProcessorName = processor?.UserName,
                 ProcessTime = appeal.ProcessTime,
+                Venue = appointmentWithVenue.VenueName,
             };
 
             return Ok(new { code = 200, data = result });
@@ -434,6 +436,8 @@ public class AppealController : ControllerBase
                     {
                         appointment.AppointmentStatus = "completed";
                     }
+
+                    appeal.Violation.ViolationStatus = "invalid";
                 }
 
                 // 3. 插入 point_change 记录
@@ -517,6 +521,8 @@ public class AppealController : ControllerBase
                 .Where(a => request.AppealIds.Contains(a.AppealId) && a.AppealStatus == "pending")
                 .ToListAsync();
 
+            int processedCount = appeals.Count; // 实际被处理的数量
+
             foreach (var appeal in appeals)
             {
                 appeal.AppealStatus = request.Action == "approve" ? "approved" : "rejected";
@@ -552,6 +558,8 @@ public class AppealController : ControllerBase
 
                         if (appointment != null)
                             appointment.AppointmentStatus = "completed";
+
+                        appeal.Violation.ViolationStatus = "invalid";
                     }
 
                     notificationContent = "您的申诉已被管理员接受，积分+10";
@@ -575,7 +583,7 @@ public class AppealController : ControllerBase
             await _db.SaveChangesAsync();
             await transaction.CommitAsync();
 
-            return Ok(new { code = 200 });
+            return Ok(new { code = 200, processedCount }); // 返回处理条数
         }
         catch (Exception ex)
         {

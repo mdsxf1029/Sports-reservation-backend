@@ -31,6 +31,11 @@ public class Violation
     [SwaggerSchema("处罚措施")]
     public string? ViolationPenalty { get; set; }
 
+    [Required]
+    [Column("VIOLATION_STATUS")]
+    [SwaggerSchema("违约状态")]
+    public string ViolationStatus { get; set; }
+
     [ForeignKey(nameof(AppointmentId))]
     public Appointment? Appointment { get; set; }
 }

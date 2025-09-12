@@ -88,13 +88,20 @@ namespace Sports_reservation_backend.Controllers.AuthControllers
         {
             try
             {
+                // 1. 查找用户
                 var user = await _db.UserSet.FirstOrDefaultAsync(u => u.Email == request.Email);
                 if (user == null)
                     return Ok(ApiResponse<object>.Fail(1003, "邮箱未注册"));
 
+                // 2. 校验密码
                 if (user.Password != request.Password)
                     return Ok(ApiResponse<object>.Fail(1002, "账号密码错误"));
 
+                // 3. 校验角色
+                if (!string.IsNullOrWhiteSpace(request.Role) && user.Role != request.Role)
+                    return Ok(ApiResponse<object>.Fail(1004, "用户角色不匹配"));
+
+                // 4. 生成 JWT
                 var jwtKey = _config["Jwt:SecretKey"]!;
                 var jwtIssuer = _config["Jwt:Issuer"]!;
                 var jwtAudience = _config["Jwt:Audience"]!;

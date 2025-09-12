@@ -13,9 +13,10 @@ public class UserAppointment
     [SwaggerSchema("预约ID")]
     public int AppointmentId { get; set; }
 
+    [Required]
     [Column("USER_ID")]
     [SwaggerSchema("用户ID")]
-    public int? UserId { get; set; }
+    public int UserId { get; set; }
 
     [ForeignKey(nameof(UserId))]
     public User? User { get; set; }

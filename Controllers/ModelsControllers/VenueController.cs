@@ -25,20 +25,35 @@ namespace Sports_reservation_backend.Controllers
         /// GET /api/venues?name=xxx
         /// </summary>
         [HttpGet]
-        public async Task<IActionResult> GetSubVenuesByName([FromQuery] string name)
+        public async Task<IActionResult> GetSubVenuesByName([FromQuery] string? name)
         {
             try
             {
-                if (string.IsNullOrWhiteSpace(name))
+                var query =
+                    from v in _db.VenueSet
+                    join va in _db.VenueAppointmentSet on v.VenueId equals va.VenueId into vaGroup
+                    from va in vaGroup.DefaultIfEmpty()
+                    join a in _db.AppointmentSet
+                        on va.AppointmentId equals a.AppointmentId
+                        into aGroup
+                    from a in aGroup.DefaultIfEmpty()
+                    select new { v, a };
+
+                // 如果传了 name，就加上过滤条件
+                if (!string.IsNullOrWhiteSpace(name))
                 {
-                    return Ok(new { success = false, venues = new object[] { } });
+                    query = query.Where(x => x.v.VenueName == name);
                 }
 
-                var list = await _db
-                    .VenueSet.AsNoTracking()
-                    .Where(v => v.VenueName == name)
-                    .OrderBy(v => v.VenueSubname)
-                    .Select(v => new { venue_id = v.VenueId, venue_subname = v.VenueSubname })
+                var list = await query
+                    .GroupBy(x => new { x.v.VenueId, x.v.VenueSubname })
+                    .OrderBy(g => g.Key.VenueSubname)
+                    .Select(g => new
+                    {
+                        venue_id = g.Key.VenueId,
+                        venue_subname = g.Key.VenueSubname,
+                        appointmentCount = g.Count(x => x.a != null),
+                    })
                     .ToListAsync();
 
                 return Ok(new { success = true, venues = list });
@@ -61,50 +76,75 @@ namespace Sports_reservation_backend.Controllers
             [FromQuery] string? search
         )
         {
-            var query = _db.VenueSet.AsQueryable();
-
-            // 按类型过滤
-            if (!string.IsNullOrEmpty(type))
+            try
             {
-                query = query.Where(v => v.VenueType.Contains(type));
-            }
+                var query =
+                    from v in _db.VenueSet
+                    join va in _db.VenueAppointmentSet on v.VenueId equals va.VenueId into vaGroup
+                    from va in vaGroup.DefaultIfEmpty()
+                    join a in _db.AppointmentSet
+                        on va.AppointmentId equals a.AppointmentId
+                        into aGroup
+                    from a in aGroup.DefaultIfEmpty()
+                    select new { v, a };
 
-            // 按搜索关键词过滤（模糊匹配 name 和 address）
-            if (!string.IsNullOrEmpty(search))
-            {
-                query = query.Where(v =>
-                    v.VenueName.Contains(search) || v.VenueLocation.Contains(search)
+                // 按类型过滤
+                if (!string.IsNullOrEmpty(type))
+                {
+                    query = query.Where(x => x.v.VenueType.Contains(type));
+                }
+
+                // 按搜索关键词过滤（模糊匹配 name 和 address）
+                if (!string.IsNullOrEmpty(search))
+                {
+                    query = query.Where(x =>
+                        x.v.VenueName.Contains(search) || x.v.VenueLocation.Contains(search)
+                    );
+                }
+
+                // 分组统计 appointmentCount
+                var venues = await query
+                    .GroupBy(x => x.v)
+                    .Select(g => new
+                    {
+                        id = g.Key.VenueId,
+                        name = g.Key.VenueName,
+                        address = g.Key.VenueLocation,
+                        hours = g.Key.OpeningHours,
+                        campus = g.Key.VenueLocation.Contains("四平") ? "四平校区" : "嘉定校区",
+                        type = g.Key.VenueType,
+                        image = g.Key.VenuePictureUrl,
+                        appointmentCount = g.Count(x => x.a != null),
+                    })
+                    .ToListAsync();
+
+                // 按 campus 参数过滤
+                if (!string.IsNullOrEmpty(campus))
+                {
+                    venues = venues.Where(r => r.campus == campus).ToList();
+                }
+
+                return Ok(
+                    new
+                    {
+                        code = 200,
+                        msg = "success",
+                        data = venues,
+                    }
                 );
             }
-
-            var venues = await query.ToListAsync();
-
-            // 转换成返回格式
-            var result = venues.Select(v => new
+            catch (Exception ex)
             {
-                id = v.VenueId,
-                name = v.VenueName,
-                address = v.VenueLocation,
-                hours = v.OpeningHours,
-                campus = v.VenueLocation.Contains("四平") ? "四平校区" : "嘉定校区",
-                type = v.VenueType,
-                image = v.VenuePictureUrl,
-            });
-
-            // 按 campus 参数过滤（基于地址推算的结果）
-            if (!string.IsNullOrEmpty(campus))
-            {
-                result = result.Where(r => r.campus == campus);
+                _logger.LogError(ex, "获取场馆列表失败");
+                return Ok(
+                    new
+                    {
+                        code = 500,
+                        msg = "获取场馆列表失败",
+                        data = new object[] { },
+                    }
+                );
             }
-
-            return Ok(
-                new
-                {
-                    code = 200,
-                    msg = "success",
-                    data = result,
-                }
-            );
         }
 
         /// <summary>
@@ -309,21 +349,36 @@ namespace Sports_reservation_backend.Controllers
                     .Take(pageSize)
                     .ToListAsync();
 
+                // 计算 appointmentCount
+                var venueIds = venues.Select(v => v.VenueId).ToList();
+
+                var appointmentCounts = await _db
+                    .VenueAppointmentSet.Where(va => venueIds.Contains(va.VenueId))
+                    .GroupBy(va => va.VenueId)
+                    .Select(g => new { VenueId = g.Key, Count = g.Count() })
+                    .ToListAsync();
+
                 // 转换成返回格式
-                var list = venues.Select(v => new
+                var list = venues.Select(v =>
                 {
-                    id = v.VenueId,
-                    name = v.VenueName,
-                    type = v.VenueType,
-                    price = v.Price,
-                    price_unit = v.PriceUnit,
-                    location = v.VenueLocation,
-                    maxOccupancy = v.VenueCapacity,
-                    status = v.VenueStatus,
-                    subname = v.VenueSubname,
-                    pictureurl = v.VenuePictureUrl,
-                    openingHours = v.OpeningHours,
-                    bookingHours = v.BookingHours,
+                    var count =
+                        appointmentCounts.FirstOrDefault(ac => ac.VenueId == v.VenueId)?.Count ?? 0;
+                    return new
+                    {
+                        id = v.VenueId,
+                        name = v.VenueName,
+                        type = v.VenueType,
+                        price = v.Price,
+                        price_unit = v.PriceUnit,
+                        location = v.VenueLocation,
+                        maxOccupancy = v.VenueCapacity,
+                        status = v.VenueStatus,
+                        subname = v.VenueSubname,
+                        pictureurl = v.VenuePictureUrl,
+                        openingHours = v.OpeningHours,
+                        bookingHours = v.BookingHours,
+                        appointmentCount = count, // 新增字段
+                    };
                 });
 
                 // 统计信息基于当前筛选条件
